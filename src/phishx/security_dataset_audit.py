@@ -2,13 +2,9 @@
 Run: PYTHONPATH=src python -m phishx.security_dataset_audit
 
 Validation: required columns and labels are checked before the audit runs
-and raise a clear ValueError if violated. Both classes 0 and 1 must be
-present, otherwise class percentages would be undefined (NaN).
-Missing / non-string URLs are counted in ``url_type_audit`` and handled
-safely (treated as missing host / empty text for string markers) instead
-of raising an exception. Host parsing goes through
-``_safe_parse_hostname`` so the audit never passes raw non-string values
-to ``parse_hostname``.
+and raise a clear ValueError if violated. Missing / non-string URLs are
+counted in ``url_type_audit`` and handled safely (treated as missing host /
+empty text for string markers) instead of raising an exception.
 """
 import hashlib
 import json
@@ -31,24 +27,11 @@ REQUIRED_COLUMNS = [
 ALLOWED_LABELS = {0, 1}
 
 
-def _safe_parse_hostname(value):
-    """Parse a hostname without ever passing non-string input onward.
-
-    The audit must not rely on ``parse_hostname`` tolerating raw
-    non-string values: non-strings are mapped to a missing host (None)
-    here first, and only strings reach ``parse_hostname``.
-    """
-    if not isinstance(value, str):
-        return None
-    return parse_hostname(value)
-
-
 def validate_dataframe(df):
     """Validate required columns, labels and URL types.
 
     Returns a ``url_type_audit`` dict describing URL column types.
-    Raises ValueError for missing columns, unexpected labels, missing
-    (NaN) labels, or a missing class (both 0 and 1 must be present).
+    Raises ValueError for missing columns or unexpected labels.
     Missing / non-string URLs do NOT raise; they are reported and handled
     safely downstream.
     """
@@ -87,16 +70,6 @@ def validate_dataframe(df):
             "missing (NaN) values; audit requires complete labels."
         )
 
-    # Both classes must be present: class percentages are computed per
-    # class, so a missing class would produce NaN instead of a number.
-    missing_classes = sorted(ALLOWED_LABELS - observed_set)
-    if missing_classes:
-        raise ValueError(
-            f"Missing required ClassLabel values: {missing_classes}. "
-            "Audit requires both classes 0 (phishing) and 1 (legitimate) "
-            "to compute class percentages."
-        )
-
     # URL types: report only, never raise here.
     url_series = df["URL"]
     is_string = url_series.map(lambda u: isinstance(u, str))
@@ -115,12 +88,10 @@ def validate_dataframe(df):
 def summarize(df):
     url_type_audit = validate_dataframe(df)
 
+    hosts = df.URL.map(parse_hostname)
     # Safe text view: non-string / missing URLs become "" so string
     # operations below never raise (AttributeError / TypeError).
     url_text = df.URL.map(lambda u: u if isinstance(u, str) else "")
-    # Hosts go through _safe_parse_hostname on the raw values so the
-    # audit never passes a non-string to parse_hostname directly.
-    hosts = df.URL.map(_safe_parse_hostname)
     parsed_ip = hosts.map(is_ip_address)
 
     # Structural indicators are not validity judgments or phishing labels.
@@ -141,19 +112,9 @@ def summarize(df):
     }
     cohorts = {}
     for name, mask in masks.items():
-        cohorts[name] = {}
-        for label in (0, 1):
-            class_mask = df.ClassLabel.eq(label)
-            class_rows = int(class_mask.sum())
-            # Guard against NaN: validate_dataframe already requires both
-            # classes, but never emit NaN even if it is bypassed.
-            class_percent = (
-                round(100 * mask[class_mask].mean(), 4) if class_rows else 0.0
-            )
-            cohorts[name][str(label)] = {
-                "count": int((mask & class_mask).sum()),
-                "class_percent": class_percent,
-            }
+        cohorts[name] = {str(label): {"count": int((mask & df.ClassLabel.eq(label)).sum()),
+                                    "class_percent": round(100 * mask[df.ClassLabel.eq(label)].mean(), 4)}
+                         for label in (0, 1)}
 
     neg = df.subdomain_count.eq(-1)
     zero_tld = df.tld_length.eq(0)

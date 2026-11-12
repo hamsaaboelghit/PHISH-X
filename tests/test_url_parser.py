@@ -114,6 +114,40 @@ class TestStrictParser:
         p = parse_url(url)
         assert p.is_opaque_scheme and p.host == "" and p.host_kind == "empty"
 
+<<<<<<< HEAD
+=======
+    @pytest.mark.parametrize("url", ["javascript:123", "data:123"])
+    def test_numeric_opaque_scheme_is_not_a_host_port(self, url):
+        """``javascript:123`` / ``data:123`` are opaque, not host:port."""
+        p = parse_url(url)
+        assert p.is_opaque_scheme
+        assert p.host == "" and p.host_kind == "empty"
+        assert p.port is None and p.authority_source == "none"
+        assert p.path == "123"
+
+    def test_numeric_opaque_scheme_is_case_insensitive(self):
+        p = parse_url("JAVASCRIPT:123")
+        assert p.is_opaque_scheme and p.host == ""
+
+    def test_schemeless_host_port_stays_implied(self):
+        """``example.com:8080`` must remain a schemeless host:port."""
+        p = parse_url("example.com:8080")
+        assert not p.is_opaque_scheme
+        assert p.authority_source == "implied"
+        assert p.host == "example.com" and p.port == 8080
+
+    def test_backslash_before_at_sign_is_a_path_delimiter(self):
+        """``https://example.com\\@other.example/``: host is example.com.
+
+        The backslash is a browser-aware path delimiter, so the ``@``
+        after it starts the path and is NOT a user-info separator.
+        """
+        p = parse_url("https://example.com\\@other.example/")
+        assert p.host == "example.com"
+        assert p.path == "/@other.example/"
+        assert p.userinfo == ""
+
+>>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
     # ---- IP addresses
     def test_ipv4(self):
         assert parse_url("http://127.0.0.1/").host_kind == "ipv4"

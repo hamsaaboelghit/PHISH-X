@@ -20,7 +20,17 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass
 
+<<<<<<< HEAD
 from .url_parser import ParsedURL, UrlParseError, default_port_for, parse_url
+=======
+from .url_parser import (
+    ParsedURL,
+    UrlParseError,
+    default_port_for,
+    normalize_url_text,
+    parse_url,
+)
+>>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
 
 __all__ = ["UrlSecuritySignals", "analyze_url_security"]
 
@@ -46,6 +56,14 @@ class UrlSecuritySignals:
     userinfo_contains_dot: bool = False  # e.g. paypal.com@evil.example
     port: int | None = None
     port_valid: bool = True
+<<<<<<< HEAD
+=======
+    #: True when a port was present but is not a valid port number
+    #: (non-numeric, or outside 0-65535). This is a separate fact from
+    #: ``has_nondefault_port``: an invalid port must never be read as
+    #: "default port, therefore safe".
+    has_invalid_port: bool = False
+>>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
     has_nondefault_port: bool = False
     has_punycode_label: bool = False  # label starting with "xn--"
     has_non_ascii_host: bool = False
@@ -74,7 +92,13 @@ def analyze_url_security(url: object) -> UrlSecuritySignals:
     except UrlParseError as exc:
         return _failed(str(exc))
 
+<<<<<<< HEAD
     text = url.strip()
+=======
+    # Same normalisation as the strict parser (strip + delete \t\r\n),
+    # so the raw-text checks below cannot disagree with the parsed view.
+    text = normalize_url_text(url)
+>>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
     labels = p.labels
     non_ascii = not p.host.isascii()
     default_port = default_port_for(p.scheme)
@@ -93,6 +117,10 @@ def analyze_url_security(url: object) -> UrlSecuritySignals:
         userinfo_contains_dot="." in p.userinfo,
         port=p.port,
         port_valid=p.port_valid,
+<<<<<<< HEAD
+=======
+        has_invalid_port=not p.port_valid,
+>>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
         has_nondefault_port=(
             p.port is not None
             and default_port is not None
