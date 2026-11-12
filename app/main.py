@@ -13,7 +13,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-<<<<<<< HEAD
 # Production URL modules (extractor, security signals, baseline model).
 # Imported without starting the UI or accessing the network.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -24,8 +23,6 @@ from phishx.models.baseline import (  # noqa: E402
     train_baseline,
 )
 
-=======
->>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
 
 # ============================================================
 # PHISH-X | THREAT INTELLIGENCE PLATFORM
@@ -520,17 +517,6 @@ def safe_hostname(url):
 
 
 def extract_basic_signals(url):
-<<<<<<< HEAD
-=======
-    # Display helper for the URL Investigation page ONLY. This is NOT the
-    # production feature extractor and its output must never be fed to a
-    # model. The production extractor is
-    # ``phishx.features.url_features.extract_features`` (16 features in
-    # ``FEATURE_NAMES`` order); security diagnostics live in
-    # ``phishx.features.url_signals.analyze_url_security`` and are kept
-    # separate from the model feature vector. See
-    # ``docs/URL_SECURITY_AND_FEATURE_SPECIFICATION.md`` section 10.1.
->>>>>>> cb0e666d1b4161a0efb8a8176648128a77dbfb7d
     normalized = url.strip()
 
     try:
