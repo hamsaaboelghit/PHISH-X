@@ -1,3 +1,4 @@
+
 import numpy as np
 
 
@@ -7,29 +8,24 @@ def sigmoid(z):
 
 
 def compute_loss(X, y, w):
-    m = len(y)
     predictions = sigmoid(X @ w)
-
     epsilon = 1e-15
     predictions = np.clip(predictions, epsilon, 1 - epsilon)
 
-    loss = -np.mean(
+    return -np.mean(
         y * np.log(predictions)
         + (1 - y) * np.log(1 - predictions)
     )
-
-    return loss
 
 
 def compute_gradient(X, y, w):
     m = len(y)
     predictions = sigmoid(X @ w)
+    return (X.T @ (predictions - y)) / m
 
-    gradient = (X.T @ (predictions - y)) / m
 
-    return gradient
-def numerical_gradient(X, y, w, h=1e-5):
-    grad = np.zeros_like(w)
+def numerical_gradient(X, y, w, h):
+    grad = np.zeros_like(w, dtype=float)
 
     for i in range(len(w)):
         w_plus = w.copy()
@@ -44,26 +40,89 @@ def numerical_gradient(X, y, w, h=1e-5):
         grad[i] = (loss_plus - loss_minus) / (2 * h)
 
     return grad
-X = np.array([
-    [1.0, 2.0],
-    [1.0, 3.0],
-    [1.0, 4.0],
-    [1.0, 5.0]
-])
 
-y = np.array([0, 0, 1, 1])
 
-w = np.array([0.1, 0.2])
+datasets = {
+    "Dataset 1": (
+        np.array([
+            [1.0, 2.0],
+            [1.0, 3.0],
+            [1.0, 4.0],
+            [1.0, 5.0]
+        ]),
+        np.array([0, 0, 1, 1])
+    ),
 
-analytical = compute_gradient(X, y, w)
-numerical = numerical_gradient(X, y, w)
+    "Dataset 2": (
+        np.array([
+            [1.0, 1.0],
+            [1.0, 2.0],
+            [1.0, 3.0],
+            [1.0, 4.0],
+            [1.0, 5.0]
+        ]),
+        np.array([0, 0, 0, 1, 1])
+    ),
 
-print("Analytical Gradient:", analytical)
-print("Numerical Gradient:", numerical)
-difference = np.linalg.norm(analytical - numerical)
+    "Dataset 3": (
+        np.array([
+            [1.0, 0.5],
+            [1.0, 1.5],
+            [1.0, 2.5],
+            [1.0, 3.5],
+            [1.0, 4.5],
+            [1.0, 5.5]
+        ]),
+        np.array([0, 0, 0, 1, 1, 1])
+    )
+}
 
-print("Gradient Difference:", difference)
+initial_weights = [
+    np.array([0.0, 0.0]),
+    np.array([0.1, 0.2]),
+    np.array([-0.5, 0.3])
+]
 
-assert np.allclose(analytical, numerical, atol=1e-5)
+step_sizes = [1e-3, 1e-5, 1e-7]
 
-print("Gradient Verification Passed!")
+total_tests = 0
+passed_tests = 0
+
+print("=" * 75)
+print("ANALYTICAL VS NUMERICAL GRADIENT VERIFICATION")
+print("=" * 75)
+
+for dataset_name, (X, y) in datasets.items():
+
+    for weight_index, w in enumerate(initial_weights, start=1):
+
+        analytical = compute_gradient(X, y, w)
+
+        for h in step_sizes:
+
+            numerical = numerical_gradient(X, y, w, h)
+
+            difference = np.linalg.norm(analytical - numerical)
+
+            passed = np.allclose(
+                analytical, numerical, atol=1e-5, rtol=1e-4
+            )
+
+            total_tests += 1
+            passed_tests += int(passed)
+
+            print(f"\n{dataset_name} | Weights {weight_index} | h = {h}")
+            print("Analytical Gradient:", analytical)
+            print("Numerical Gradient: ", numerical)
+            print("Gradient Difference:", difference)
+            print("Result:", "PASSED" if passed else "FAILED")
+
+print("\n" + "=" * 75)
+print(f"Total Tests: {total_tests}")
+print(f"Passed Tests: {passed_tests}")
+print(f"Failed Tests: {total_tests - passed_tests}")
+print("=" * 75)
+
+assert passed_tests == total_tests, "Some gradient tests failed!"
+
+print("All Gradient Verification Tests Passed!")
