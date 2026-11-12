@@ -100,3 +100,18 @@ extractor or new feature definitions were created.
 - Audit evidence regenerates identically; dataset SHA256 unchanged
   (`ed8d830fba05688b5f57f7e7deacb8f377268898cb6f36da50bde1eebd8d95ec`).
 - No dataset/split changes. No merge performed.
+
+## Follow-up verification (feature repro + ablation)
+
+- Latest `main` verified: `38b5e2a` (local `origin/main` ref; `git fetch
+  origin` unavailable in sandbox — re-run on a machine with remote
+  access before pushing).
+- Branch: `shawky/feature-repro-ablation` (based on `main` at `38b5e2a`).
+- Command: `PYTHONPATH=src python -m unittest discover -s tests -v`
+- Result: **Ran 14 tests — OK (13 passed, 0 failed, 1 skipped)**.
+  The 2 new tests are the feature-definitions reproducibility checks
+  (known examples + full-dataset zero-mismatch assertion).
+- Skipped test: `test_production_feature_contract` — skipped because
+  Eiad has not yet confirmed the shared extractor module, interface,
+  and feature semantics (Task 4 BLOCKED). No production extractor
+  tests are claimed complete.

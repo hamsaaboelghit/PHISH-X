@@ -23,6 +23,16 @@ from phishx.security_dataset_audit import (
     validate_dataframe,
     _safe_parse_hostname,
 )
+from phishx.features.feature_definitions_repro import (
+    reproduce,
+    recompute_query_param_count,
+    recompute_subdomain_count,
+    recompute_has_ip_address,
+    recompute_tld_popularity,
+    recompute_suspicious_file_extension,
+    recompute_tld_length,
+    recompute_domain_name_length,
+)
 
 CASES = json.loads(
     (ROOT / 'tests/cases/url_security_cases.json').read_text(encoding='utf-8')
@@ -302,6 +312,71 @@ class SecurityDatasetAuditValidation(unittest.TestCase):
         # Strict JSON serialization must succeed (allow_nan=False raises
         # if any NaN/Infinity leaked into the output).
         json.dumps(result, allow_nan=False)
+
+
+class FeatureDefinitionsRepro(unittest.TestCase):
+    def setUp(self):
+        self._getaddrinfo_patcher = patch(
+            'socket.getaddrinfo',
+            side_effect=AssertionError('Network forbidden'),
+        )
+        self._socket_patcher = patch(
+            'socket.socket',
+            side_effect=AssertionError('Network forbidden'),
+        )
+        self._getaddrinfo_patcher.start()
+        self._socket_patcher.start()
+        self.addCleanup(self._socket_patcher.stop)
+        self.addCleanup(self._getaddrinfo_patcher.stop)
+
+    def test_recompute_functions_known_examples(self):
+        # Query: & after first ? + 1, else 1 (not parsed params).
+        self.assertEqual(
+            recompute_query_param_count('https://example.com/?a=1&b=2'), 2)
+        self.assertEqual(
+            recompute_query_param_count('https://example.com/'), 1)
+        # Subdomain: labels-2, no IP special case (IPv4 -> 2).
+        self.assertEqual(
+            recompute_subdomain_count('http://192.0.2.10/login'), 2)
+        self.assertEqual(
+            recompute_subdomain_count('https://a.b.example.com/'), 2)
+        # IP: anywhere in URL, not hostname-only.
+        self.assertEqual(
+            recompute_has_ip_address('https://example.com/1.2.3.4/x'), 1)
+        self.assertEqual(
+            recompute_has_ip_address('https://example.com/'), 0)
+        # Popularity: popular netloc final part, port included.
+        self.assertEqual(
+            recompute_tld_popularity('https://example.com/', 0), 1)
+        self.assertEqual(
+            recompute_tld_popularity('http://example.com:8888/', 0), 0)
+        self.assertEqual(
+            recompute_tld_popularity('https://example.com/', -1), 0)
+        # Suspicious: path endswith, query ignored.
+        self.assertEqual(
+            recompute_suspicious_file_extension(
+                'http://example.com/a.exe?x=1'), 1)
+        self.assertEqual(
+            recompute_suspicious_file_extension(
+                'http://example.com/a.txt?x=evil.exe'), 0)
+        # Lengths: port included in TLD part.
+        self.assertEqual(
+            recompute_tld_length('http://example.com:8888/'), 8)
+        self.assertEqual(
+            recompute_domain_name_length('http://example.com:8888/'), 7)
+
+    def test_reproduce_full_dataset_confirmed_zero_mismatches(self):
+        df = pd.read_csv(ROOT / 'data/processed/cleaned_dataset.csv')
+        result = reproduce(df)
+        for feature in ('query_param_count', 'subdomain_count',
+                        'has_ip_address', 'tld_popularity',
+                        'suspicious_file_extension', 'tld_length',
+                        'domain_name_length'):
+            with self.subTest(feature=feature):
+                self.assertEqual(result[feature]['mismatches'], 0)
+        # token_count audit hypothesis must NOT reproduce (UNKNOWN).
+        self.assertGreater(
+            result['token_count (audit hypothesis, UNKNOWN)']['mismatches'], 0)
 
 
 if __name__ == '__main__':
