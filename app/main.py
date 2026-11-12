@@ -27,6 +27,19 @@ from components.theme import (
     WHITE,
 )
 
+from components.charts import style_chart
+
+from components.cards import (
+    section_title,
+    page_header,
+    metric_card,
+)
+
+from utils.url_helpers import (
+    safe_hostname,
+    extract_basic_signals,
+)
+
 
 # ============================================================
 # PHISH-X | THREAT INTELLIGENCE PLATFORM
@@ -43,14 +56,6 @@ st.set_page_config(
 )
 
 apply_theme()
-
-
-# ============================================================
-# DESIGN SYSTEM
-# ============================================================
-
-
-
 
 
 # ============================================================
@@ -82,120 +87,6 @@ if df is not None:
         })
     else:
         df["ClassName"] = "Unknown"
-
-
-# ============================================================
-# PLOTLY THEME
-# ============================================================
-
-def style_chart(fig, height=330):
-    fig.update_layout(
-        height=height,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(
-            family="Inter",
-            color="#AFC0D3",
-            size=11,
-        ),
-        margin=dict(l=15, r=15, t=35, b=15),
-        legend=dict(
-            bgcolor="rgba(0,0,0,0)",
-            borderwidth=0,
-        ),
-        xaxis=dict(
-            gridcolor="#1C2B3D",
-            zerolinecolor="#1C2B3D",
-            linecolor="#26394E",
-        ),
-        yaxis=dict(
-            gridcolor="#1C2B3D",
-            zerolinecolor="#1C2B3D",
-            linecolor="#26394E",
-        ),
-    )
-    return fig
-
-
-def section_title(title, subtitle=None):
-    st.markdown(f'<div class="section-label">{title}</div>', unsafe_allow_html=True)
-    if subtitle:
-        st.caption(subtitle)
-
-
-def page_header(kicker, title, subtitle):
-    st.markdown(
-        f"""
-        <div class="eyebrow">{kicker}</div>
-        <div class="page-title">{title}</div>
-        <div class="page-subtitle">{subtitle}</div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def metric_card(label, value, note=""):
-    st.markdown(
-        f"""
-        <div class="info-card">
-            <div class="card-label">{label}</div>
-            <div class="card-value">{value}</div>
-            <div class="card-note">{note}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def safe_hostname(url):
-    try:
-        candidate = url.strip()
-        if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", candidate):
-            candidate = "http://" + candidate
-
-        parsed = urlsplit(candidate)
-        return parsed.hostname or ""
-    except (ValueError, AttributeError):
-        return ""
-
-
-def extract_basic_signals(url):
-    normalized = url.strip()
-
-    try:
-        parsed_url = normalized
-        if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", parsed_url):
-            parsed_url = "http://" + parsed_url
-
-        parsed = urlsplit(parsed_url)
-        hostname = parsed.hostname or ""
-        path = parsed.path or ""
-        query = parsed.query or ""
-
-        is_ip = False
-        if hostname:
-            try:
-                ipaddress.ip_address(hostname)
-                is_ip = True
-            except ValueError:
-                pass
-
-        return {
-            "URL length": len(normalized),
-            "HTTPS": int(parsed.scheme.lower() == "https"),
-            "IP address in hostname": int(is_ip),
-            "Dots in full URL": normalized.count("."),
-            "Digits in URL": sum(c.isdigit() for c in normalized),
-            "Hyphen in hostname": int("-" in hostname),
-            "Path length": len(path),
-            "Query parameters": len(
-                [x for x in query.split("&") if x]
-            ),
-            "Hostname length": len(hostname),
-        }
-
-    except ValueError:
-        return {}
 
 
 # ============================================================

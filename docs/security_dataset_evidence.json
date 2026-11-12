@@ -134,6 +134,10 @@
   "dataset_sha256": "ed8d830fba05688b5f57f7e7deacb8f377268898cb6f36da50bde1eebd8d95ec",
   "host_concentration": {
     "0": {
+      "class_rows": 63492,
+      "denominator": "all rows in class (including missing-host rows)",
+      "rows_missing_host": 1,
+      "rows_with_parsed_host": 63491,
       "top10_hosts": {
         "files.veritas.org.ng": 718,
         "hans.uniformeslaamistad.com": 768,
@@ -147,10 +151,15 @@
         "yowui.johnmccrea.com": 686
       },
       "top10_percent": 12.0645,
+      "top10_percent_of_parsed_host_rows": 12.0647,
       "top10_rows": 7660,
       "unique_hosts": 26887
     },
     "1": {
+      "class_rows": 37380,
+      "denominator": "all rows in class (including missing-host rows)",
+      "rows_missing_host": 0,
+      "rows_with_parsed_host": 37380,
       "top10_hosts": {
         "en.wikipedia.org": 102,
         "m.youtube.com": 4,
@@ -164,8 +173,38 @@
         "www.youtube.com": 33
       },
       "top10_percent": 0.6742,
+      "top10_percent_of_parsed_host_rows": 0.6742,
       "top10_rows": 252,
       "unique_hosts": 37114
+    }
+  },
+  "ip_flag_vs_parsed": {
+    "both": 48894,
+    "discrepancy_records": 22,
+    "note": "Stored flag (has_ip_address==1) vs strict parsed hostname (is_ip_address(parse_hostname(URL))). Row-level counts above make the discrepancy reproducible; aggregate difference alone does not establish row-level disagreement.",
+    "parsed_only": 0,
+    "parsed_only_by_label": {
+      "0": 0,
+      "1": 0
+    },
+    "parsed_strict_ip": {
+      "by_label": {
+        "0": 48894,
+        "1": 0
+      },
+      "total": 48894
+    },
+    "stored_has_ip_address_1": {
+      "by_label": {
+        "0": 48916,
+        "1": 0
+      },
+      "total": 48916
+    },
+    "stored_only": 22,
+    "stored_only_by_label": {
+      "0": 22,
+      "1": 0
     }
   },
   "labels": {
@@ -176,6 +215,7 @@
     "count": 1308,
     "missing_hosts": 1,
     "single_label_hosts": 9,
+    "strict_ip_hosts": 0,
     "top_hosts": {
       "app.qmailer.co.uk": 84,
       "bit.ly": 11,
@@ -189,8 +229,22 @@
       "www.gttconnect.com.cn": 13
     },
     "zero_domain_name_length": 1300,
+    "zero_tld_and_zero_domain_name_length": 1300,
     "zero_tld_length": 1300
   },
-  "notes": "0=phishing; 1=legitimate. Indicators may overlap. Host parser is existing subdomain_audit.parse_hostname; it is not a URL validator. No source provenance column exists.",
-  "rows": 100872
+  "notes": "0=phishing; 1=legitimate. Indicators may overlap. Host parser is existing subdomain_audit.parse_hostname; it is not a URL validator. No source provenance column exists. Host concentration percentages use all rows in the class as denominator (see host_concentration.denominator); top10_percent_of_parsed_host_rows is provided for comparison. Stored has_ip_address flag and strict parsed IP are distinct definitions (see ip_flag_vs_parsed). Missing/non-string URLs are counted in url_type_audit and treated as missing host / empty text, never as valid URLs.",
+  "rows": 100872,
+  "url_type_audit": {
+    "empty_or_whitespace_string_count": 0,
+    "missing_count": 0,
+    "non_string_non_missing_count": 0,
+    "string_count": 100872,
+    "total_rows": 100872
+  },
+  "zero_length_bundle": {
+    "both_zero": 1300,
+    "either_zero": 1300,
+    "zero_domain_name_length": 1300,
+    "zero_tld_length": 1300
+  }
 }
