@@ -67,6 +67,14 @@ def parse_hostname(url):
 # =========================================================
 
 def is_ip_address(hostname):
+    # Safety fix: only strings can be hostnames. Non-string input
+    # (None, numbers, containers, ...) is not an IP address. Previously
+    # integers/bools were passed to ipaddress.ip_address() and
+    # misclassified (e.g. 123 -> True, 0 -> False). String behavior
+    # is unchanged.
+    if not isinstance(hostname, str):
+        return False
+
     if not hostname:
         return False
 
