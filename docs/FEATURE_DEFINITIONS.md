@@ -245,9 +245,81 @@ source-specific bundle, not computed by these formulas.
    definition unknown. Audit file retained for history; do not use its
    calculator as ground truth.
 4. **`tld_popularity` + sentinel bundle:** popularity, `-1`, and
-   zero-lengths move together (all-phishing cohort). Shawky's proposed
-   ablations (stored IP flags, `-1`/zero bundle, `tld_popularity`) remain
-   the right next experiments — proposed, not results.
+   zero-lengths move together (all-phishing cohort). The
+   `tld_popularity` ablation is now done (see below); stored-IP and
+   sentinel-bundle ablations remain proposed, not results.
+
+## `tld_popularity` ablation (Group Split)
+
+Script: `src/phishx/evaluation/tld_popularity_ablation.py`
+Results: `docs/tld_popularity_ablation.json`
+Model: Logistic Regression + StandardScaler (fit on train only),
+fixed Group Split (81,165 train / 19,707 test).
+
+| Metric | All 16 | Without `tld_popularity` | Delta |
+|---|---|---|---|
+| Accuracy | 99.69% | 99.65% | −0.04 pp |
+| Phishing precision | 99.91% | 99.91% | ~0 |
+| Phishing recall | 99.59% | 99.53% | −0.07 pp |
+| Phishing F1 | 99.75% | 99.72% | −0.03 pp |
+| Legitimate FPR | 0.41% | 0.47% | +0.07 pp |
+
+Correlation between `tld_popularity` and the label is 0.59 (strong),
+but removing the feature barely changes performance: the model does
+**not** heavily rely on it given the other features. Correlation alone
+is **not** proof of data leakage; this ablation measures reliance, not
+a leakage verdict. The near-perfect scores with and without the feature
+indicate other shortcuts (notably `has_ip_address`) dominate — see
+Shawky's audit for the IP-shortcut and sentinel-bundle findings.
+
+## Stored values vs re-extraction at prediction (Eiad agreement needed)
+
+| Feature | Training (now) | Serving / re-extraction |
+|---|---|---|
+| `query_param_count` | Use stored | Formula confirmed; serving use needs Eiad input-contract agreement (HTTP(S), invalid handling) |
+| `subdomain_count` | Use stored (incl. `-1` sentinel as-is) | Formula confirmed for non-sentinel; sentinel emission for new URLs needs agreement — do not invent |
+| `has_ip_address` | Use stored (anywhere-regex) | Formula confirmed; do not silently switch to hostname-only |
+| `token_count` | Use stored | **Blocked:** original tokenizer unknown; needs new agreed tokenizer (Eiad) |
+| `tld_popularity` | Use stored | Formula confirmed incl. port/sentinel rules; serving use needs Eiad agreement |
+| `suspicious_file_extension` | Use stored | Formula confirmed (observed list); case handling unconfirmed |
+| `domain_name_length`, `tld_length` | Use stored | Formulas confirmed incl. port; serving must not strip ports without agreement |
+
+Rule: stored values are ground truth for training. Any serving-time
+re-extraction must match these definitions **and** be agreed with Eiad
+(input contract, invalid-URL behavior, sentinel/port/case policies)
+before it is treated as the production extractor.
+
+## Feature names and order contract (Dataset Loader / Model / URL Investigation)
+
+Dataset column order (`data/processed/cleaned_dataset.csv`, after `URL`,
+before `ClassLabel`):
+
+1. `url_length`
+2. `has_ip_address`
+3. `dot_count`
+4. `https_flag`
+5. `url_entropy`
+6. `token_count`
+7. `subdomain_count`
+8. `query_param_count`
+9. `tld_length`
+10. `path_length`
+11. `has_hyphen_in_domain`
+12. `number_of_digits`
+13. `tld_popularity`
+14. `suspicious_file_extension`
+15. `domain_name_length`
+16. `percentage_numeric_chars`
+
+Norhan's AI Model Core loader (`origin/norhan/ai-model-core`,
+`src/phishx/data/dataset.py`) currently uses a 5-feature baseline subset
+in this order: `url_length`, `number_of_digits`, `url_entropy`,
+`dot_count`, `path_length`, with `StandardScaler` fit on train only.
+That subset order differs from dataset order — the single agreed
+contract (names, order, types, scaling) between Dataset Loader, Model,
+and URL Investigation is **pending confirmation** with Norhan and Eiad
+and is not claimed here. Until agreed, each component must document
+which names/order it uses and must not silently reorder or rename.
 
 ## Limitations
 
