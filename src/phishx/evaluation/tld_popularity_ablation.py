@@ -2,8 +2,13 @@
 
 Uses the fixed Group Split (primary evaluation) with preprocessing fit
 on train only. Compares all-16-features vs without-tld_popularity.
-Correlation is reported separately and is NOT treated as proof of data
-leakage; the ablation measures model reliance on the feature.
+Positive class is Phishing (0); Legitimate is 1. Correlation is
+reported separately and is NOT treated as proof of data leakage; the
+ablation measures model reliance on the feature.
+
+NOTE: this experiment uses sklearn Logistic Regression on all 16
+stored features. It is different from Norhan's 5-feature baseline in
+the AI Model Core and is NOT a direct evaluation of the app model.
 
 Run: PYTHONPATH=src python -m phishx.evaluation.tld_popularity_ablation
 Writes docs/tld_popularity_ablation.json. No dataset/split writes.
@@ -76,28 +81,47 @@ def evaluate(train, test, features):
     model = LogisticRegression(max_iter=1000, random_state=42)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
-    # Phishing = 0 (positive class for precision/recall/F1).
-    tn, fp, fn, tp = confusion_matrix(y_test, y_pred, labels=[0, 1]).ravel()
+    # Positive class is Phishing (0). With labels=[0, 1] the matrix is:
+    #   [[TP (0,0), FN (0,1)],
+    #    [FP (1,0), TN (1,1)]]
+    # where TP=phishing correct, FN=phishing as legitimate,
+    # FP=legitimate as phishing, TN=legitimate correct.
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+    tp, fn, fp, tn = int(cm[0, 0]), int(cm[0, 1]), int(cm[1, 0]), int(cm[1, 1])
+    precision = float(
+        precision_score(y_test, y_pred, pos_label=0, zero_division=0)
+    )
+    recall = float(
+        recall_score(y_test, y_pred, pos_label=0, zero_division=0)
+    )
+    f1 = float(f1_score(y_test, y_pred, pos_label=0, zero_division=0))
+    # Consistency: sklearn metrics must match matrix-derived values.
+    matrix_precision = tp / (tp + fp) if (tp + fp) else 0.0
+    matrix_recall = tp / (tp + fn) if (tp + fn) else 0.0
+    matrix_f1 = (
+        2 * matrix_precision * matrix_recall
+        / (matrix_precision + matrix_recall)
+        if (matrix_precision + matrix_recall)
+        else 0.0
+    )
+    assert abs(precision - matrix_precision) < 1e-9, "precision mismatch"
+    assert abs(recall - matrix_recall) < 1e-9, "recall mismatch"
+    assert abs(f1 - matrix_f1) < 1e-9, "F1 mismatch"
     return {
         "features": features,
         "n_train": int(len(train)),
         "n_test": int(len(test)),
         "accuracy": float(accuracy_score(y_test, y_pred)),
-        "phishing_precision": float(
-            precision_score(y_test, y_pred, pos_label=0, zero_division=0)
-        ),
-        "phishing_recall": float(
-            recall_score(y_test, y_pred, pos_label=0, zero_division=0)
-        ),
-        "phishing_f1": float(
-            f1_score(y_test, y_pred, pos_label=0, zero_division=0)
-        ),
+        "phishing_precision": precision,
+        "phishing_recall": recall,
+        "phishing_f1": f1,
+        # Legitimate FPR: legitimate predicted as phishing / all legitimate.
         "legitimate_false_positive_rate": float(fp / (fp + tn)) if (fp + tn) else 0.0,
         "confusion_matrix": {
-            "tn_legit_correct": int(tn),
-            "fp_legit_as_phishing": int(fp),
-            "fn_phishing_as_legit": int(fn),
-            "tp_phishing_correct": int(tp),
+            "tn_legit_correct": tn,
+            "fp_legit_as_phishing": fp,
+            "fn_phishing_as_legit": fn,
+            "tp_phishing_correct": tp,
         },
     }
 
@@ -115,7 +139,14 @@ def main():
 
     result = {
         "split": "Group Split by Host (fixed; train/test manifests)",
-        "model": "LogisticRegression(max_iter=1000, random_state=42) + StandardScaler (fit on train only)",
+        "positive_class": "Phishing (0); Legitimate is 1",
+        "model": (
+            "sklearn LogisticRegression(max_iter=1000, random_state=42) "
+            "+ StandardScaler (fit on train only) on all 16 stored "
+            "features. This differs from Norhan's 5-feature baseline "
+            "in the AI Model Core and is not a direct evaluation of "
+            "the app model."
+        ),
         "baseline_all_16": baseline,
         "ablated_without_tld_popularity": ablated,
         "delta_ablated_minus_baseline": {

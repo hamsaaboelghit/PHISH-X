@@ -115,3 +115,20 @@ extractor or new feature definitions were created.
   Eiad has not yet confirmed the shared extractor module, interface,
   and feature semantics (Task 4 BLOCKED). No production extractor
   tests are claimed complete.
+
+## PR #8 follow-up verification (ablation fix + cleanup)
+
+- Branch: `shawky/pr8-followup-fixes` (based on `main` at `38b5e2a`).
+  Note: the reviewed `main` at `896241e` (after PR #8) is not available
+  in this sandbox (`git fetch origin` unavailable); tests were run on
+  the branch HEAD below. Re-run on a machine with remote access after
+  fetching `896241e` before merging.
+- Tested commit: `5877396` (HEAD at verification time; the report-update
+  commit follows it).
+- Command: `PYTHONPATH=src python -m unittest discover -s tests -v`
+- Result: **Ran 14 tests — OK (13 passed, 0 failed, 1 skipped)**.
+- Skipped test: `test_production_feature_contract` — skipped because
+  Eiad has not yet confirmed the production feature contract (module
+  path, function interface, feature definitions, invalid-URL handling).
+  Task 4 remains BLOCKED; no production extractor tests are claimed
+  complete.

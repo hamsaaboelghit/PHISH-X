@@ -85,11 +85,14 @@ class URLSecurityCases(unittest.TestCase):
                 self.assertEqual(second, third)
                 self.assertEqual(first, case['host'])
                 self.assertEqual(is_ip_address(first), case['ip'])
-                # Subdomain helper must also be stable across calls.
-                self.assertEqual(
-                    analyze_subdomain(case['url']),
-                    analyze_subdomain(case['url']),
-                )
+                # Subdomain helper: consistency + type/range checks
+                # against expected behavior (not self-comparison).
+                sub = analyze_subdomain(case['url'])
+                if case['host'] is None:
+                    self.assertIsNone(sub)
+                else:
+                    self.assertIsInstance(sub, int)
+                    self.assertGreaterEqual(sub, 0)
         # Known subdomain values stay stable and exact.
         for url, expected in [('https://a.b.example.com/', 2),
                               ('http://192.0.2.10/', 0),
@@ -368,15 +371,26 @@ class FeatureDefinitionsRepro(unittest.TestCase):
     def test_reproduce_full_dataset_confirmed_zero_mismatches(self):
         df = pd.read_csv(ROOT / 'data/processed/cleaned_dataset.csv')
         result = reproduce(df)
-        for feature in ('query_param_count', 'subdomain_count',
-                        'has_ip_address', 'tld_popularity',
-                        'suspicious_file_extension', 'tld_length',
+        # Dataset size and sentinel cohort size.
+        self.assertEqual(len(df), 100872)
+        self.assertEqual(result['_sentinel_rows'], 1308)
+        # total_compared: sentinel-excluded features compare 99,564 rows;
+        # all-row features compare 100,872 rows.
+        for feature in ('query_param_count', 'has_ip_address',
+                        'tld_popularity', 'suspicious_file_extension'):
+            with self.subTest(feature=feature):
+                self.assertEqual(result[feature]['mismatches'], 0)
+                self.assertEqual(result[feature]['total_compared'], 100872)
+        for feature in ('subdomain_count', 'tld_length',
                         'domain_name_length'):
             with self.subTest(feature=feature):
                 self.assertEqual(result[feature]['mismatches'], 0)
-        # token_count audit hypothesis must NOT reproduce (UNKNOWN).
-        self.assertGreater(
-            result['token_count (audit hypothesis, UNKNOWN)']['mismatches'], 0)
+                self.assertEqual(result[feature]['total_compared'], 99564)
+        # token_count audit hypothesis must NOT reproduce (UNKNOWN) and
+        # must never be treated as the original/production definition.
+        token = result['token_count (audit hypothesis, UNKNOWN)']
+        self.assertEqual(token['total_compared'], 100872)
+        self.assertGreater(token['mismatches'], 0)
 
 
 if __name__ == '__main__':
