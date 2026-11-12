@@ -1,0 +1,196 @@
+{
+  "cohorts": {
+    "backslash": {
+      "0": {
+        "class_percent": 0.0756,
+        "count": 48
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "deep_host_5plus_labels": {
+      "0": {
+        "class_percent": 0.4032,
+        "count": 256
+      },
+      "1": {
+        "class_percent": 1.3349,
+        "count": 499
+      }
+    },
+    "hostname_hyphen": {
+      "0": {
+        "class_percent": 2.835,
+        "count": 1800
+      },
+      "1": {
+        "class_percent": 7.4371,
+        "count": 2780
+      }
+    },
+    "ip_host": {
+      "0": {
+        "class_percent": 77.0081,
+        "count": 48894
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "missing_host": {
+      "0": {
+        "class_percent": 0.0016,
+        "count": 1
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "negative_subdomain": {
+      "0": {
+        "class_percent": 2.0601,
+        "count": 1308
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "non_ascii": {
+      "0": {
+        "class_percent": 0.0,
+        "count": 0
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "percent_encoding": {
+      "0": {
+        "class_percent": 0.8773,
+        "count": 557
+      },
+      "1": {
+        "class_percent": 0.0348,
+        "count": 13
+      }
+    },
+    "query_marker": {
+      "0": {
+        "class_percent": 1.1939,
+        "count": 758
+      },
+      "1": {
+        "class_percent": 0.1017,
+        "count": 38
+      }
+    },
+    "single_label_host": {
+      "0": {
+        "class_percent": 0.0142,
+        "count": 9
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "url_200plus_chars": {
+      "0": {
+        "class_percent": 0.1402,
+        "count": 89
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    },
+    "userinfo_marker": {
+      "0": {
+        "class_percent": 0.0063,
+        "count": 4
+      },
+      "1": {
+        "class_percent": 0.0027,
+        "count": 1
+      }
+    },
+    "whitespace": {
+      "0": {
+        "class_percent": 0.0079,
+        "count": 5
+      },
+      "1": {
+        "class_percent": 0.0,
+        "count": 0
+      }
+    }
+  },
+  "dataset_sha256": "ed8d830fba05688b5f57f7e7deacb8f377268898cb6f36da50bde1eebd8d95ec",
+  "host_concentration": {
+    "0": {
+      "top10_hosts": {
+        "files.veritas.org.ng": 718,
+        "hans.uniformeslaamistad.com": 768,
+        "jake.iestpchincha.edu.pe": 685,
+        "jask.powerforxes.shop": 770,
+        "kale.amwebsolution.com": 687,
+        "males.mugutu.com": 766,
+        "malw.esalesin.com": 692,
+        "nsdm.cumpar-auto-orice-tip.ro": 964,
+        "playd.healthnlife.pk": 924,
+        "yowui.johnmccrea.com": 686
+      },
+      "top10_percent": 12.0645,
+      "top10_rows": 7660,
+      "unique_hosts": 26887
+    },
+    "1": {
+      "top10_hosts": {
+        "en.wikipedia.org": 102,
+        "m.youtube.com": 4,
+        "stackoverflow.com": 100,
+        "www.bls.gov": 2,
+        "www.collegeboard.org": 2,
+        "www.kaggle.com": 2,
+        "www.quora.com": 2,
+        "www.squarespace.com": 3,
+        "www.ssa.gov": 2,
+        "www.youtube.com": 33
+      },
+      "top10_percent": 0.6742,
+      "top10_rows": 252,
+      "unique_hosts": 37114
+    }
+  },
+  "labels": {
+    "0.0": 63492,
+    "1.0": 37380
+  },
+  "negative_subdomain_details": {
+    "count": 1308,
+    "missing_hosts": 1,
+    "single_label_hosts": 9,
+    "top_hosts": {
+      "app.qmailer.co.uk": 84,
+      "bit.ly": 11,
+      "docs.google.com": 12,
+      "fluchinfos.com": 13,
+      "home.comcast.net": 22,
+      "machenss.com": 12,
+      "passivemobilemoneymachine.com": 12,
+      "paypal.com.us.cgi.bin.webscr.cmd.login.member.verifed.interhottap.com.mx": 13,
+      "pyuthansamachar.com": 16,
+      "www.gttconnect.com.cn": 13
+    },
+    "zero_domain_name_length": 1300,
+    "zero_tld_length": 1300
+  },
+  "notes": "0=phishing; 1=legitimate. Indicators may overlap. Host parser is existing subdomain_audit.parse_hostname; it is not a URL validator. No source provenance column exists.",
+  "rows": 100872
+}
