@@ -6,38 +6,21 @@ import html
 import ipaddress
 import math
 import re
+import sys
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from components.theme import (
-    apply_theme,
-    BG,
-    PANEL,
-    PANEL_2,
-    BORDER,
-    CYAN,
-    BLUE,
-    PURPLE,
-    GREEN,
-    RED,
-    MUTED,
-    WHITE,
-)
-
-from components.charts import style_chart
-
-from components.cards import (
-    section_title,
-    page_header,
-    metric_card,
-)
-
-from utils.url_helpers import (
-    safe_hostname,
-    extract_basic_signals,
+# Production URL modules (extractor, security signals, baseline model).
+# Imported without starting the UI or accessing the network.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from phishx.features.url_features import FEATURE_NAMES  # noqa: E402
+from phishx.models.baseline import (  # noqa: E402
+    BASELINE_FEATURES,
+    analyze_url,
+    train_baseline,
 )
 
 
@@ -55,7 +38,376 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-apply_theme()
+
+# ============================================================
+# DESIGN SYSTEM
+# ============================================================
+
+BG = "#080D16"
+PANEL = "#101927"
+PANEL_2 = "#131F30"
+BORDER = "#1F3044"
+CYAN = "#20D9E6"
+BLUE = "#3987FF"
+PURPLE = "#9B7BFF"
+GREEN = "#31D69B"
+RED = "#FF5577"
+MUTED = "#8192A8"
+WHITE = "#EDF5FF"
+
+
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+    :root {
+        --bg: #080D16;
+        --panel: #101927;
+        --panel2: #131F30;
+        --border: #1F3044;
+        --cyan: #20D9E6;
+        --blue: #3987FF;
+        --purple: #9B7BFF;
+        --text: #EDF5FF;
+        --muted: #8192A8;
+    }
+
+    html, body, [data-testid="stAppViewContainer"] {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Inter', sans-serif;
+    }
+
+    [data-testid="stHeader"] {
+        background: rgba(8,13,22,0.85);
+    }
+
+    [data-testid="stAppViewContainer"] > .main {
+        background:
+            radial-gradient(ellipse at 15% 0%, rgba(32,217,230,0.055), transparent 35%),
+            radial-gradient(ellipse at 90% 10%, rgba(155,123,255,0.055), transparent 30%),
+            var(--bg);
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 1600px;
+    }
+
+    [data-testid="stSidebar"] {
+        background: #0B1320;
+        border-right: 1px solid #1B2B3F;
+    }
+
+    [data-testid="stSidebar"] > div:first-child {
+        padding-top: 1.5rem;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        color: #A8B7CA;
+    }
+
+    [data-testid="stSidebar"] .stRadio label {
+        padding: 9px 12px;
+        border-radius: 9px;
+    }
+
+    [data-testid="stSidebar"] .stRadio label:hover {
+        background: #142338;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stRadio"] > div {
+        gap: 7px;
+    }
+
+    h1, h2, h3 {
+        color: var(--text) !important;
+        letter-spacing: -0.6px;
+    }
+
+    h1 {
+        font-weight: 800 !important;
+    }
+
+    h2, h3 {
+        font-weight: 700 !important;
+    }
+
+    p, label, span {
+        font-family: 'Inter', sans-serif;
+    }
+
+    [data-testid="stMetric"] {
+        background: linear-gradient(145deg, #121F30, #0E1826);
+        border: 1px solid var(--border);
+        border-radius: 13px;
+        padding: 17px 19px;
+        min-height: 112px;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: #91A3B9 !important;
+        font-size: 0.82rem !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: #F1F7FF !important;
+        font-weight: 800 !important;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.76rem !important;
+    }
+
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: rgba(16,25,39,0.8);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+    }
+
+    .eyebrow {
+        color: var(--cyan);
+        text-transform: uppercase;
+        letter-spacing: 2.5px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .page-title {
+        color: #F2F7FF;
+        font-size: 2.25rem;
+        font-weight: 800;
+        letter-spacing: -1.2px;
+        margin: 0;
+    }
+
+    .page-subtitle {
+        color: #8FA2B9;
+        font-size: 0.96rem;
+        margin-top: 8px;
+        margin-bottom: 25px;
+    }
+
+    .brand {
+        font-size: 1.65rem;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        color: #F2F7FF;
+    }
+
+    .brand span {
+        color: var(--cyan);
+    }
+
+    .brand-sub {
+        font-size: 0.65rem;
+        color: #8093AA;
+        letter-spacing: 2.1px;
+        margin-top: 2px;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 11px;
+        border-radius: 30px;
+        border: 1px solid rgba(49,214,155,0.25);
+        background: rgba(49,214,155,0.08);
+        color: #63E7B7;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+    .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #31D69B;
+        box-shadow: 0 0 9px #31D69B;
+    }
+
+    .section-label {
+        color: #A9B9CC;
+        font-size: 0.77rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.6px;
+        margin: 12px 0 14px 0;
+    }
+
+    .info-card {
+        background: linear-gradient(145deg, #121F30, #0D1724);
+        border: 1px solid #20334A;
+        border-radius: 13px;
+        padding: 18px;
+        height: 100%;
+    }
+
+    .info-card .card-label {
+        color: #8EA2BA;
+        font-size: 0.76rem;
+        margin-bottom: 10px;
+    }
+
+    .info-card .card-value {
+        color: #F2F7FF;
+        font-size: 1.35rem;
+        font-weight: 800;
+    }
+
+    .info-card .card-note {
+        color: #8092A8;
+        font-size: 0.76rem;
+        margin-top: 8px;
+    }
+
+    .accent-line {
+        height: 3px;
+        width: 42px;
+        background: linear-gradient(90deg, var(--cyan), var(--blue));
+        border-radius: 5px;
+        margin: 10px 0 18px 0;
+    }
+
+    .hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(115deg, #10273A 0%, #111D32 52%, #211A3B 100%);
+        border: 1px solid #29445D;
+        border-radius: 18px;
+        padding: 27px 30px;
+        margin-bottom: 24px;
+    }
+
+    .hero::after {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        right: -80px;
+        top: -130px;
+        border-radius: 50%;
+        border: 1px solid rgba(32,217,230,0.18);
+        box-shadow: 0 0 0 25px rgba(32,217,230,0.025),
+                    0 0 0 55px rgba(32,217,230,0.02);
+    }
+
+    .hero-kicker {
+        color: var(--cyan);
+        font-family: 'Space Mono', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 2px;
+        margin-bottom: 10px;
+    }
+
+    .hero-title {
+        color: #F5FAFF;
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .hero-text {
+        color: #A9BED1;
+        font-size: 0.9rem;
+        max-width: 680px;
+        line-height: 1.7;
+    }
+
+    .hero-tag {
+        display: inline-block;
+        border: 1px solid rgba(32,217,230,0.25);
+        background: rgba(32,217,230,0.08);
+        color: #72EAF0;
+        border-radius: 6px;
+        padding: 5px 9px;
+        font-family: 'Space Mono', monospace;
+        font-size: 0.68rem;
+        margin-right: 6px;
+        margin-top: 14px;
+    }
+
+    .url-result {
+        background: #101C2A;
+        border: 1px solid #294057;
+        border-radius: 13px;
+        padding: 20px;
+        margin-top: 15px;
+    }
+
+    .url-result-title {
+        color: #91A6BD;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 1.4px;
+        margin-bottom: 10px;
+    }
+
+    .url-result-value {
+        color: #F2F7FF;
+        font-family: 'Space Mono', monospace;
+        font-size: 0.88rem;
+        overflow-wrap: anywhere;
+    }
+
+    .stButton > button {
+        background: linear-gradient(100deg, #13BFCF, #347CF2);
+        color: #06121E;
+        border: none;
+        border-radius: 9px;
+        font-weight: 800;
+        padding: 0.62rem 1.25rem;
+        transition: 0.2s ease;
+    }
+
+    .stButton > button:hover {
+        box-shadow: 0 0 22px rgba(32,217,230,0.22);
+        border: none;
+        color: #06121E;
+        transform: translateY(-1px);
+    }
+
+    .stTextInput input, .stNumberInput input {
+        background: #0D1927;
+        border: 1px solid #2A3C51;
+        color: #F2F7FF;
+        border-radius: 9px;
+    }
+
+    [data-baseweb="select"] > div {
+        background: #0D1927;
+        border-color: #2A3C51;
+    }
+
+    [data-testid="stDataFrame"] {
+        border: 1px solid #25374B;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    hr {
+        border-color: #203047;
+    }
+
+    .footer {
+        color: #63768D;
+        font-size: 0.72rem;
+        text-align: center;
+        padding-top: 25px;
+        letter-spacing: 0.4px;
+    }
+
+    #MainMenu, footer {
+        visibility: hidden;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 # ============================================================
@@ -87,6 +439,120 @@ if df is not None:
         })
     else:
         df["ClassName"] = "Unknown"
+
+
+# ============================================================
+# PLOTLY THEME
+# ============================================================
+
+def style_chart(fig, height=330):
+    fig.update_layout(
+        height=height,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(
+            family="Inter",
+            color="#AFC0D3",
+            size=11,
+        ),
+        margin=dict(l=15, r=15, t=35, b=15),
+        legend=dict(
+            bgcolor="rgba(0,0,0,0)",
+            borderwidth=0,
+        ),
+        xaxis=dict(
+            gridcolor="#1C2B3D",
+            zerolinecolor="#1C2B3D",
+            linecolor="#26394E",
+        ),
+        yaxis=dict(
+            gridcolor="#1C2B3D",
+            zerolinecolor="#1C2B3D",
+            linecolor="#26394E",
+        ),
+    )
+    return fig
+
+
+def section_title(title, subtitle=None):
+    st.markdown(f'<div class="section-label">{title}</div>', unsafe_allow_html=True)
+    if subtitle:
+        st.caption(subtitle)
+
+
+def page_header(kicker, title, subtitle):
+    st.markdown(
+        f"""
+        <div class="eyebrow">{kicker}</div>
+        <div class="page-title">{title}</div>
+        <div class="page-subtitle">{subtitle}</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def metric_card(label, value, note=""):
+    st.markdown(
+        f"""
+        <div class="info-card">
+            <div class="card-label">{label}</div>
+            <div class="card-value">{value}</div>
+            <div class="card-note">{note}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def safe_hostname(url):
+    try:
+        candidate = url.strip()
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", candidate):
+            candidate = "http://" + candidate
+
+        parsed = urlsplit(candidate)
+        return parsed.hostname or ""
+    except (ValueError, AttributeError):
+        return ""
+
+
+def extract_basic_signals(url):
+    normalized = url.strip()
+
+    try:
+        parsed_url = normalized
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", parsed_url):
+            parsed_url = "http://" + parsed_url
+
+        parsed = urlsplit(parsed_url)
+        hostname = parsed.hostname or ""
+        path = parsed.path or ""
+        query = parsed.query or ""
+
+        is_ip = False
+        if hostname:
+            try:
+                ipaddress.ip_address(hostname)
+                is_ip = True
+            except ValueError:
+                pass
+
+        return {
+            "URL length": len(normalized),
+            "HTTPS": int(parsed.scheme.lower() == "https"),
+            "IP address in hostname": int(is_ip),
+            "Dots in full URL": normalized.count("."),
+            "Digits in URL": sum(c.isdigit() for c in normalized),
+            "Hyphen in hostname": int("-" in hostname),
+            "Path length": len(path),
+            "Query parameters": len(
+                [x for x in query.split("&") if x]
+            ),
+            "Hostname length": len(hostname),
+        }
+
+    except ValueError:
+        return {}
 
 
 # ============================================================
@@ -196,6 +662,39 @@ feature_columns = [
 ]
 
 duplicate_count = int(df["URL"].duplicated().sum()) if "URL" in df.columns else 0
+
+
+# ============================================================
+# MODEL (5-feature baseline, trained live on the fixed Group Split)
+# ============================================================
+# The model is trained once per session from the fixed split files
+# (StandardScaler fit on train only; NumPy batch Gradient Descent).
+# There is no saved weights artifact in the repository, so training
+# happens here and is cached. Predictions are real (trained on real
+# data with the AI Model Core algorithm), never mocked. If training
+# fails, the app shows an error and no prediction is offered.
+
+
+@st.cache_resource(show_spinner="Training baseline model...")
+def get_baseline_model():
+    return train_baseline("gradient_descent")
+
+
+@st.cache_resource(show_spinner="Running optimization experiments...")
+def get_optimization_experiments():
+    return {
+        "gradient_descent": train_baseline("gradient_descent"),
+        "newtons_method": train_baseline("newtons_method"),
+    }
+
+
+try:
+    baseline_model = get_baseline_model()
+    model_ready = True
+except Exception as exc:  # noqa: BLE001 - surface any training failure
+    baseline_model = None
+    model_ready = False
+    model_error = str(exc)
 
 
 # ============================================================
@@ -351,11 +850,12 @@ elif page == "Dataset Intelligence":
         "Investigate class composition, feature distributions and potential data-quality risks.",
     )
 
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "Class Analysis",
         "Feature Explorer",
         "TLD Intelligence",
         "Data Quality",
+        "Correlations",
     ])
 
     # --------------------------------------------------------
@@ -634,6 +1134,55 @@ elif page == "Dataset Intelligence":
             "before model training. This page does not automatically clean or modify the raw dataset."
         )
 
+    # --------------------------------------------------------
+    # CORRELATIONS
+    # --------------------------------------------------------
+
+    with tab5:
+
+        section_title(
+            "FEATURE CORRELATIONS",
+            "Pearson correlations among the 16 dataset features and the label.",
+        )
+
+        st.markdown(
+            """
+            <div class="info-card">
+                <div class="card-label">16 DATASET FEATURES VS 5 BASELINE FEATURES</div>
+                <div class="card-note">
+                    The dataset stores 16 features (production extractor
+                    output, in FEATURE_NAMES order). The baseline model
+                    consumes a 5-feature subset selected by name —
+                    url_length, number_of_digits, url_entropy, dot_count,
+                    path_length — in baseline order (which differs from
+                    dataset order). The feature adapter selects by name;
+                    features are never silently reordered or renamed.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        corr_cols = feature_columns + ["ClassLabel"]
+        corr = df[corr_cols].corr(numeric_only=True)
+
+        fig = px.imshow(
+            corr,
+            text_auto=".2f",
+            aspect="auto",
+            color_continuous_scale="RdBu_r",
+            range_color=[-1, 1],
+        )
+        fig = style_chart(fig, 620)
+        fig.update_layout(coloraxis_showscale=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.caption(
+            "Correlation is not proof of data leakage; it only shows "
+            "linear association in this dataset. See the dataset audit "
+            "report for leakage analysis."
+        )
+
 
 # ============================================================
 # PAGE 3 — OPTIMIZATION LAB
@@ -710,6 +1259,20 @@ elif page == "Optimization Lab":
     st.markdown("<br>", unsafe_allow_html=True)
 
     with st.container(border=True):
+        st.markdown("### Sigmoid function")
+
+        st.latex(r"\sigma(z)=\frac{1}{1+e^{-z}}")
+
+        st.markdown(
+            """
+            Maps the linear score to a probability in (0, 1).
+            In PHISH-X the output is P(Legitimate): labels are stored
+            as 0 = Phishing, 1 = Legitimate, so sigma(z) >= 0.5
+            predicts Legitimate.
+            """
+        )
+
+    with st.container(border=True):
         st.markdown("### Objective function")
 
         st.latex(
@@ -731,10 +1294,72 @@ elif page == "Optimization Lab":
             """
         )
 
-    st.info(
-        "Optimization experiments are not connected yet. "
-        "No training results, convergence curves or performance comparisons are fabricated here."
+    st.markdown("<br>", unsafe_allow_html=True)
+    section_title(
+        "LIVE EXPERIMENT — GRADIENT DESCENT VS NEWTON'S METHOD",
+        "Real training runs on the fixed Group Split (not simulated).",
     )
+
+    try:
+        experiments = get_optimization_experiments()
+    except Exception as exc:  # noqa: BLE001
+        experiments = None
+        st.error(f"Optimization experiments failed: {html.escape(str(exc))}")
+
+    if experiments is not None:
+        gd = experiments["gradient_descent"]
+        nw = experiments["newtons_method"]
+
+        exp_df = pd.DataFrame(
+            [
+                {
+                    "Optimizer": "Gradient Descent",
+                    "Iterations": gd.n_iterations,
+                    "Final loss (BCE)": round(gd.final_loss, 4),
+                    "Train accuracy": f"{gd.train_accuracy:.2%}",
+                    "Test accuracy": f"{gd.test_accuracy:.2%}",
+                    "Runtime (s)": round(gd.runtime_seconds, 2),
+                },
+                {
+                    "Optimizer": "Newton's Method",
+                    "Iterations": nw.n_iterations,
+                    "Final loss (BCE)": round(nw.final_loss, 4),
+                    "Train accuracy": f"{nw.train_accuracy:.2%}",
+                    "Test accuracy": f"{nw.test_accuracy:.2%}",
+                    "Runtime (s)": round(nw.runtime_seconds, 2),
+                },
+            ]
+        )
+        st.dataframe(exp_df, use_container_width=True, hide_index=True)
+
+        loss_df = pd.DataFrame(
+            {
+                "Iteration": range(1, len(gd.loss_history) + 1),
+                "Gradient Descent": gd.loss_history,
+            }
+        )
+        fig = px.line(
+            loss_df,
+            x="Iteration",
+            y="Gradient Descent",
+            labels={"Gradient Descent": "BCE loss"},
+        )
+        fig = style_chart(fig, 350)
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            "Gradient Descent loss per iteration (1,000 iterations). "
+            "Newton's Method reaches a lower loss in "
+            f"{nw.n_iterations} iterations (see table); its per-iteration "
+            "curve is omitted for readability."
+        )
+
+        st.info(
+            "These are live training results on the fixed Group Split "
+            "(81,165 train / 19,707 test, 5 baseline features). "
+            "Newton's Method uses the Hessian and converges in far fewer "
+            "iterations; Gradient Descent is cheaper per iteration. "
+            "No results are simulated."
+        )
 
 
 # ============================================================
@@ -784,52 +1409,151 @@ elif page == "URL Investigation":
         if not url_input.strip():
             st.warning("Enter a URL first.")
 
+        elif not model_ready:
+            st.error(
+                "The baseline model could not be trained, so no prediction "
+                f"is available. Training error: {html.escape(model_error)}"
+            )
+
         else:
-            signals = extract_basic_signals(url_input)
+            # Production pipeline: extract 16 features -> adapt to the
+            # 5 baseline features by name -> predict -> explain.
+            # Security signals/warnings are diagnostics only, never a
+            # prediction. No network access is performed.
+            with st.spinner("Analyzing URL..."):
+                result = analyze_url(url_input, baseline_model)
 
-            if not signals:
-                st.error("Could not parse this URL.")
-            else:
-                st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
 
-                st.markdown(
-                    f"""
-                    <div class="url-result">
-                        <div class="url-result-title">TARGET UNDER INVESTIGATION</div>
-                        <div class="url-result-value">{html.escape(url_input)}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
+            st.markdown(
+                f"""
+                <div class="url-result">
+                    <div class="url-result-title">TARGET UNDER INVESTIGATION</div>
+                    <div class="url-result-value">{html.escape(url_input)}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            if result["prediction"] is None:
+                st.error(
+                    f"No prediction: {result['no_prediction_reason']}"
                 )
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                section_title("EXTRACTED URL SIGNALS")
-
-                cols = st.columns(3)
-
-                for i, (name, value) in enumerate(signals.items()):
-                    with cols[i % 3]:
-                        st.metric(name, f"{value:,}")
-
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                with st.container(border=True):
-                    st.markdown("#### Signal details")
-
-                    signal_df = pd.DataFrame(
-                        list(signals.items()),
-                        columns=["Feature", "Extracted value"],
+                # Still show the extracted features and diagnostics so
+                # the analyst can inspect what was (and was not) done.
+                if result["features"] is not None:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    section_title("EXTRACTED FEATURES (16)")
+                    feat_df = pd.DataFrame(
+                        list(result["features"].items()),
+                        columns=["Feature", "Value"],
                     )
-
                     st.dataframe(
-                        signal_df,
+                        feat_df,
                         use_container_width=True,
                         hide_index=True,
                     )
+            else:
+                st.markdown("<br>", unsafe_allow_html=True)
+                section_title("MODEL PREDICTION")
 
-                st.info(
-                    "These are preliminary structural signals only. "
-                    "They are not a phishing classification or a trained-model prediction."
+                pred = result["prediction"]
+                conf = result["confidence"]
+                color = RED if pred == "Phishing" else CYAN
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.metric("Prediction", pred)
+                with c2:
+                    st.metric("Confidence", f"{conf:.1%}")
+                with c3:
+                    p_legit = conf if pred == "Legitimate" else 1.0 - conf
+                    st.metric("P(Legitimate)", f"{p_legit:.1%}")
+
+                st.caption(
+                    "5-feature baseline logistic regression (Group Split, "
+                    "StandardScaler fit on train only, NumPy Gradient "
+                    "Descent). Labels: 0 = Phishing, 1 = Legitimate; "
+                    "output is P(Legitimate)."
+                )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                section_title("WHY — FEATURE CONTRIBUTIONS")
+
+                expl_df = pd.DataFrame(
+                    result["explanation"],
+                    columns=["Feature", "Contribution (weight × scaled value)"],
+                )
+                expl_df["Contribution (weight × scaled value)"] = expl_df[
+                    "Contribution (weight × scaled value)"
+                ].round(4)
+                st.dataframe(
+                    expl_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.caption(
+                    "Linear-model contributions for the 5 baseline "
+                    "features, largest first. Positive contributions push "
+                    "toward Legitimate; negative toward Phishing."
+                )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                section_title("EXTRACTED FEATURES (16)")
+
+                feat_df = pd.DataFrame(
+                    list(result["features"].items()),
+                    columns=["Feature", "Value"],
+                )
+                st.dataframe(
+                    feat_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.caption(
+                    "Production extractor output (FEATURE_NAMES order). "
+                    "The model consumes the 5 baseline features selected "
+                    f"by name: {', '.join(BASELINE_FEATURES)}."
+                )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                section_title("SECURITY SIGNALS & WARNINGS")
+
+                st.caption(
+                    "Advisory diagnostics from the security-oriented, "
+                    "browser-aware parser. These are NOT model features "
+                    "and NOT a prediction."
+                )
+
+                if result["warnings"]:
+                    for w in result["warnings"]:
+                        st.warning(f"Extractor warning: {w}")
+                else:
+                    st.success("No extractor warnings.")
+
+                sig = result["signals"]
+                sig_items = [
+                    ("Parsed", sig["parsed"]),
+                    ("Host", sig["host"] or "—"),
+                    ("Host kind", sig["host_kind"]),
+                    ("Scheme", sig["scheme"] or "—"),
+                    ("Authority source", sig["authority_source"]),
+                    ("Has userinfo", sig["has_userinfo"]),
+                    ("Port", sig["port"] if sig["port"] is not None else "—"),
+                    ("Port valid", sig["port_valid"]),
+                    ("Non-default port", sig["has_nondefault_port"]),
+                    ("Opaque scheme", sig["is_opaque_scheme"]),
+                    ("Double scheme", sig["double_scheme"]),
+                    ("Embedded URL", sig["embedded_url_in_path_or_query"]),
+                    ("Punycode label", sig["has_punycode_label"]),
+                    ("Non-ASCII host", sig["has_non_ascii_host"]),
+                    ("Percent escapes", sig["percent_escape_count"]),
+                    ("Has fragment", sig["has_fragment"]),
+                ]
+                sig_df = pd.DataFrame(sig_items, columns=["Signal", "Value"])
+                st.dataframe(
+                    sig_df,
+                    use_container_width=True,
+                    hide_index=True,
                 )
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -837,12 +1561,17 @@ elif page == "URL Investigation":
     with st.expander("How URL analysis works"):
         st.markdown(
             """
-            1. Normalize the input enough to parse its URL structure.
-            2. Extract the hostname, path and query string.
-            3. Calculate basic numerical URL characteristics.
-            4. Display the extracted signals for analyst inspection.
+            1. Extract the 16 production features with the shared
+               extractor (`phishx.features.url_features`).
+            2. Select the 5 baseline features by name (feature adapter)
+               and scale them with train-only statistics.
+            3. Predict with the 5-feature logistic regression and show
+               confidence plus per-feature contributions.
+            4. Show security signals and extractor warnings as separate
+               diagnostics (never as a prediction).
 
-            No external URL is opened or contacted.
+            No external URL is opened or contacted. Invalid input yields
+            no prediction.
             """
         )
 
