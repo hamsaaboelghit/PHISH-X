@@ -253,8 +253,11 @@ source-specific bundle, not computed by these formulas.
 
 Script: `src/phishx/evaluation/tld_popularity_ablation.py`
 Results: `docs/tld_popularity_ablation.json`
-Model: Logistic Regression + StandardScaler (fit on train only),
-fixed Group Split (81,165 train / 19,707 test).
+Model: sklearn Logistic Regression + StandardScaler (fit on train
+only) on all 16 stored features, fixed Group Split (81,165 train /
+19,707 test). Positive class is Phishing (0). This differs from
+Norhan's 5-feature baseline in the AI Model Core and is **not** a
+direct evaluation of the app model.
 
 | Metric | All 16 | Without `tld_popularity` | Delta |
 |---|---|---|---|
@@ -262,7 +265,7 @@ fixed Group Split (81,165 train / 19,707 test).
 | Phishing precision | 99.91% | 99.91% | ~0 |
 | Phishing recall | 99.59% | 99.53% | −0.07 pp |
 | Phishing F1 | 99.75% | 99.72% | −0.03 pp |
-| Legitimate FPR | 0.41% | 0.47% | +0.07 pp |
+| Legitimate FPR | 0.15% | 0.15% | 0 |
 
 Correlation between `tld_popularity` and the label is 0.59 (strong),
 but removing the feature barely changes performance: the model does
