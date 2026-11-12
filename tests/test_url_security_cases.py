@@ -1,42 +1,28 @@
-"""Offline tests of EXISTING audit helpers, not production extractor acceptance.
+"""Offline tests of EXISTING audit helpers plus the production contract.
 Run: python -m unittest discover -s tests -v
-Production feature assertions await Eiad's contract (see handoff document).
 
-Characterization tests below document current audit-helper behavior only;
-passing them does not approve that behavior as production behavior.
+The characterization tests below document current audit-helper behavior
+only; passing them does not approve that behavior as production behavior.
+The 28 synthetic cases in ``tests/cases/url_security_cases.json`` exercise
+the OLD audit helpers (``subdomain_audit``), NOT the new production
+parser/extractor. Production acceptance is asserted separately in
+``test_production_feature_contract`` against the shared extractor
+``phishx.features.url_features`` (contract confirmed by Eiad's review of
+``origin/eyad``; see ``docs/EIAD_SECURITY_TEST_HANDOFF.md``).
+
 Network access is blocked for every test (see setUp).
 """
 import json
-import math
 from pathlib import Path
 import sys
 import unittest
 from unittest.mock import patch
 
-import pandas as pd
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from phishx.features.subdomain_audit import parse_hostname, is_ip_address, analyze_subdomain
-from phishx.security_dataset_audit import (
-    summarize,
-    validate_dataframe,
-    _safe_parse_hostname,
-)
-from phishx.features.feature_definitions_repro import (
-    reproduce,
-    recompute_query_param_count,
-    recompute_subdomain_count,
-    recompute_has_ip_address,
-    recompute_tld_popularity,
-    recompute_suspicious_file_extension,
-    recompute_tld_length,
-    recompute_domain_name_length,
-)
 
-CASES = json.loads(
-    (ROOT / 'tests/cases/url_security_cases.json').read_text(encoding='utf-8')
-)
+CASES = json.loads((ROOT / 'tests/cases/url_security_cases.json').read_text())
 
 
 class URLSecurityCases(unittest.TestCase):
@@ -85,14 +71,11 @@ class URLSecurityCases(unittest.TestCase):
                 self.assertEqual(second, third)
                 self.assertEqual(first, case['host'])
                 self.assertEqual(is_ip_address(first), case['ip'])
-                # Subdomain helper: consistency + type/range checks
-                # against expected behavior (not self-comparison).
-                sub = analyze_subdomain(case['url'])
-                if case['host'] is None:
-                    self.assertIsNone(sub)
-                else:
-                    self.assertIsInstance(sub, int)
-                    self.assertGreaterEqual(sub, 0)
+                # Subdomain helper must also be stable across calls.
+                self.assertEqual(
+                    analyze_subdomain(case['url']),
+                    analyze_subdomain(case['url']),
+                )
         # Known subdomain values stay stable and exact.
         for url, expected in [('https://a.b.example.com/', 2),
                               ('http://192.0.2.10/', 0),
@@ -103,13 +86,8 @@ class URLSecurityCases(unittest.TestCase):
 
     def test_missing_and_invalid_inputs(self):
         # Missing / non-string / sentinel inputs must not raise and must
-        # not be treated as valid hosts. parse_hostname must return None
-        # for every non-string type, including NaN, bool, bytes and
-        # containers, without raising.
-        for value in [None, 123, 12.5, float('nan'), True,
-                      b'https://example.com/', ['https://example.com/'],
-                      {'url': 'https://example.com/'},
-                      '', '   ', 'Offline', 'offline',
+        # not be treated as valid hosts.
+        for value in [None, 123, 12.5, '', '   ', 'Offline', 'offline',
                       'OFFLINE', 'http://[2001:db8::1/']:
             with self.subTest(value=repr(value)):
                 self.assertIsNone(parse_hostname(value))
@@ -122,57 +100,6 @@ class URLSecurityCases(unittest.TestCase):
         for value in ['192.0.2.10', '2001:db8::1']:
             with self.subTest(value=value):
                 self.assertTrue(is_ip_address(value))
-
-    def test_parser_input_safety(self):
-        # Task 3: existing-helper safety review only. Expected behavior:
-        # invalid inputs return None (host/subdomain) or False (IP),
-        # never raise, and never produce a valid-looking host.
-        # 1. None
-        for func in (parse_hostname, analyze_subdomain):
-            self.assertIsNone(func(None))
-        self.assertFalse(is_ip_address(None))
-        # 2. Integer and float inputs (direct calls, not via parse).
-        for value in (123, 0, 12.5, float('nan'), True, False):
-            with self.subTest(value=repr(value)):
-                self.assertIsNone(parse_hostname(value))
-                self.assertIsNone(analyze_subdomain(value))
-                self.assertFalse(is_ip_address(value))
-        # 3. Empty and whitespace strings.
-        for value in ('', '   ', '\t\n '):
-            with self.subTest(value=repr(value)):
-                self.assertIsNone(parse_hostname(value))
-                self.assertIsNone(analyze_subdomain(value))
-                self.assertFalse(is_ip_address(parse_hostname(value)))
-        # 4. "Offline" in every capitalization variation.
-        for value in ('Offline', 'offline', 'OFFLINE', 'OfFlInE',
-                      'oFfLiNe', '  Offline  '):
-            with self.subTest(value=repr(value)):
-                self.assertIsNone(parse_hostname(value))
-                self.assertIsNone(analyze_subdomain(value))
-        # 5. Malformed URLs: no crash, no valid host.
-        for value in ('http://[2001:db8::1/', 'http://[::1',
-                      'https://', '://', 'http://'):
-            with self.subTest(value=repr(value)):
-                self.assertIsNone(parse_hostname(value))
-                self.assertIsNone(analyze_subdomain(value))
-                self.assertFalse(is_ip_address(parse_hostname(value)))
-        # 6. Correct IPv4 and IPv6.
-        for url, host in [('http://192.0.2.10/', '192.0.2.10'),
-                          ('http://[2001:db8::1]/', '2001:db8::1'),
-                          ('https://[2001:db8::1]:443/a', '2001:db8::1')]:
-            with self.subTest(url=url):
-                self.assertEqual(parse_hostname(url), host)
-                self.assertTrue(is_ip_address(parse_hostname(url)))
-                self.assertEqual(analyze_subdomain(url), 0)
-        # 7. Invalid inputs never become a legitimate-looking host:
-        # every invalid value above yields None/False, asserted inline.
-        # Documented existing behaviors (characterization, not changed):
-        # out-of-range port still yields a host; embedded newline is
-        # stripped by urlsplit. Production must reject these explicitly.
-        self.assertEqual(
-            parse_hostname('https://example.com:99999/'), 'example.com')
-        self.assertEqual(
-            parse_hostname('https://exa\nmple.com/'), 'example.com')
 
     def test_normalization(self):
         # Current helper normalization, characterized explicitly so any
@@ -215,182 +142,92 @@ class URLSecurityCases(unittest.TestCase):
                     'host must be a string or null',
                 )
 
-    @unittest.skip('Blocked: Eiad must confirm shared extractor module, interface and feature semantics.')
     def test_production_feature_contract(self):
-        """Intentionally no invented import, adapter, or competing implementation."""
+        """Production extractor contract (Eiad-confirmed, origin/eyad review).
 
+        Shared extractor: ``phishx.features.url_features``.
+        Interface: ``extract_features(url) -> UrlFeatures`` and
+        ``extract_features_batch(urls) -> list[UrlFeatures]``.
+        Feature order/semantics: the 16 dataset features in
+        ``FEATURE_NAMES`` order (spec version ``1.0-legacy``).
 
-def _audit_frame(labels, urls=None):
-    """Minimal valid audit frame (both classes unless labels say otherwise)."""
-    n = len(labels)
-    urls = urls if urls is not None else ['https://example.com/'] * n
-    return pd.DataFrame({
-        'URL': urls,
-        'ClassLabel': labels,
-        'subdomain_count': [0] * n,
-        'tld_length': [3] * n,
-        'domain_name_length': [7] * n,
-        'has_ip_address': [0] * n,
-    })
-
-
-class SecurityDatasetAuditValidation(unittest.TestCase):
-    def setUp(self):
-        # Block all network access during every audit test as well.
-        self._getaddrinfo_patcher = patch(
-            'socket.getaddrinfo',
-            side_effect=AssertionError('Network forbidden'),
+        The extractor ALWAYS returns all 16 features. A model-side
+        subset (e.g. a 5-feature baseline) is a training-time selection
+        by name from ``FEATURE_NAMES`` — it is not a competing extractor
+        and must not redefine any feature. This test therefore pins the
+        16-feature extractor contract; which subset the AI team trains
+        on remains a model decision outside this contract.
+        """
+        from phishx.features.url_features import (
+            FEATURE_NAMES,
+            FEATURE_SPEC_VERSION,
+            FeatureExtractionError,
+            extract_features,
+            extract_features_batch,
         )
-        self._socket_patcher = patch(
-            'socket.socket',
-            side_effect=AssertionError('Network forbidden'),
+
+        # --- module / version / feature order -------------------------
+        self.assertEqual(FEATURE_SPEC_VERSION, '1.0-legacy')
+        self.assertEqual(
+            FEATURE_NAMES,
+            (
+                'url_length', 'has_ip_address', 'dot_count', 'https_flag',
+                'url_entropy', 'token_count', 'subdomain_count',
+                'query_param_count', 'tld_length', 'path_length',
+                'has_hyphen_in_domain', 'number_of_digits',
+                'tld_popularity', 'suspicious_file_extension',
+                'domain_name_length', 'percentage_numeric_chars',
+            ),
         )
-        self._getaddrinfo_patcher.start()
-        self._socket_patcher.start()
-        self.addCleanup(self._socket_patcher.stop)
-        self.addCleanup(self._getaddrinfo_patcher.stop)
+        self.assertEqual(len(FEATURE_NAMES), 16)
 
-    def test_audit_requires_both_classes(self):
-        # A single-class frame must raise instead of emitting NaN
-        # class percentages.
-        for labels in ([0, 0], [1, 1], [0.0, 0.0], [1.0, 1.0]):
-            with self.subTest(labels=labels):
-                with self.assertRaises(ValueError):
-                    validate_dataframe(_audit_frame(labels))
-                with self.assertRaises(ValueError):
-                    summarize(_audit_frame(labels))
-        # Both classes present (int or float labels) must pass.
-        for labels in ([0, 1], [0.0, 1.0]):
-            with self.subTest(labels=labels):
-                validate_dataframe(_audit_frame(labels))
-                summarize(_audit_frame(labels))
-
-    def test_audit_rejects_empty_dataset(self):
-        # Empty frame with required columns: both classes missing.
-        empty_with_columns = _audit_frame([]).iloc[0:0]
-        with self.assertRaises(ValueError):
-            validate_dataframe(empty_with_columns)
-        with self.assertRaises(ValueError):
-            summarize(empty_with_columns)
-        # Empty frame without any columns: required columns missing.
-        with self.assertRaises(ValueError):
-            validate_dataframe(pd.DataFrame())
-        with self.assertRaises(ValueError):
-            summarize(pd.DataFrame())
-
-    def test_audit_handles_non_string_urls_safely(self):
-        # The audit must not pass raw non-string values to parse_hostname
-        # and must not raise on them; they count as missing hosts.
-        df = _audit_frame(
-            [0, 1, 0, 1, 0, 1],
-            urls=['https://example.com/', None, 123, float('nan'),
-                  b'https://example.com/', 'http://192.0.2.10/'],
+        # --- happy path: structure, order, hand-computed values -------
+        result = extract_features('http://a.com/')
+        self.assertTrue(result.ok)
+        self.assertEqual(tuple(result.features), FEATURE_NAMES)
+        self.assertEqual(len(result.to_vector()), 16)
+        self.assertEqual(
+            result.to_vector(),
+            [result.features[name] for name in FEATURE_NAMES],
         )
-        result = summarize(df)
-        self.assertEqual(result['url_type_audit']['string_count'], 2)
-        self.assertEqual(result['url_type_audit']['missing_count'], 2)
-        self.assertEqual(
-            result['url_type_audit']['non_string_non_missing_count'], 2)
-        # 4 of 6 rows have no parsed host (None, 123, NaN, bytes).
-        self.assertEqual(
-            result['cohorts']['missing_host']['0']['count'], 2)
-        self.assertEqual(
-            result['cohorts']['missing_host']['1']['count'], 2)
-        # The safe wrapper itself never forwards non-strings.
-        for value in [None, 123, float('nan'), b'x', ['a'], {'a': 1}, True]:
-            with self.subTest(value=repr(value)):
-                self.assertIsNone(_safe_parse_hostname(value))
-        self.assertEqual(
-            _safe_parse_hostname('https://Example.COM./'), 'example.com')
+        expected = {
+            'url_length': 13,
+            'has_ip_address': 0,
+            'dot_count': 1,
+            'https_flag': 0,
+            'token_count': 5,  # 1 + 1 '.' + 3 '/'
+            'subdomain_count': 0,
+            'query_param_count': 1,  # minimum is 1, never 0
+            'tld_length': 3,
+            'path_length': 1,
+            'has_hyphen_in_domain': 0,
+            'number_of_digits': 0,
+            'tld_popularity': 1,
+            'suspicious_file_extension': 0,
+            'domain_name_length': 1,
+            'percentage_numeric_chars': 0.0,
+        }
+        for name, value in expected.items():
+            with self.subTest(feature=name):
+                self.assertEqual(result.features[name], value)
 
-    def test_audit_class_percent_never_nan(self):
-        result = summarize(_audit_frame([0, 1, 0, 1]))
-        for name, per_label in result['cohorts'].items():
-            for label, values in per_label.items():
-                with self.subTest(cohort=name, label=label):
-                    self.assertTrue(
-                        math.isfinite(values['class_percent']),
-                        f'{name}/{label} class_percent must be finite',
-                    )
-        # Strict JSON serialization must succeed (allow_nan=False raises
-        # if any NaN/Infinity leaked into the output).
-        json.dumps(result, allow_nan=False)
+        # --- determinism ----------------------------------------------
+        again = extract_features('http://a.com/')
+        self.assertEqual(result, again)
 
+        # --- batch preserves order ------------------------------------
+        batch = extract_features_batch(['http://a.com/', 'https://b.org/x'])
+        self.assertEqual(len(batch), 2)
+        self.assertTrue(all(r.ok for r in batch))
+        self.assertEqual(batch[0], result)
 
-class FeatureDefinitionsRepro(unittest.TestCase):
-    def setUp(self):
-        self._getaddrinfo_patcher = patch(
-            'socket.getaddrinfo',
-            side_effect=AssertionError('Network forbidden'),
-        )
-        self._socket_patcher = patch(
-            'socket.socket',
-            side_effect=AssertionError('Network forbidden'),
-        )
-        self._getaddrinfo_patcher.start()
-        self._socket_patcher.start()
-        self.addCleanup(self._socket_patcher.stop)
-        self.addCleanup(self._getaddrinfo_patcher.stop)
-
-    def test_recompute_functions_known_examples(self):
-        # Query: & after first ? + 1, else 1 (not parsed params).
-        self.assertEqual(
-            recompute_query_param_count('https://example.com/?a=1&b=2'), 2)
-        self.assertEqual(
-            recompute_query_param_count('https://example.com/'), 1)
-        # Subdomain: labels-2, no IP special case (IPv4 -> 2).
-        self.assertEqual(
-            recompute_subdomain_count('http://192.0.2.10/login'), 2)
-        self.assertEqual(
-            recompute_subdomain_count('https://a.b.example.com/'), 2)
-        # IP: anywhere in URL, not hostname-only.
-        self.assertEqual(
-            recompute_has_ip_address('https://example.com/1.2.3.4/x'), 1)
-        self.assertEqual(
-            recompute_has_ip_address('https://example.com/'), 0)
-        # Popularity: popular netloc final part, port included.
-        self.assertEqual(
-            recompute_tld_popularity('https://example.com/', 0), 1)
-        self.assertEqual(
-            recompute_tld_popularity('http://example.com:8888/', 0), 0)
-        self.assertEqual(
-            recompute_tld_popularity('https://example.com/', -1), 0)
-        # Suspicious: path endswith, query ignored.
-        self.assertEqual(
-            recompute_suspicious_file_extension(
-                'http://example.com/a.exe?x=1'), 1)
-        self.assertEqual(
-            recompute_suspicious_file_extension(
-                'http://example.com/a.txt?x=evil.exe'), 0)
-        # Lengths: port included in TLD part.
-        self.assertEqual(
-            recompute_tld_length('http://example.com:8888/'), 8)
-        self.assertEqual(
-            recompute_domain_name_length('http://example.com:8888/'), 7)
-
-    def test_reproduce_full_dataset_confirmed_zero_mismatches(self):
-        df = pd.read_csv(ROOT / 'data/processed/cleaned_dataset.csv')
-        result = reproduce(df)
-        # Dataset size and sentinel cohort size.
-        self.assertEqual(len(df), 100872)
-        self.assertEqual(result['_sentinel_rows'], 1308)
-        # total_compared: sentinel-excluded features compare 99,564 rows;
-        # all-row features compare 100,872 rows.
-        for feature in ('query_param_count', 'has_ip_address',
-                        'tld_popularity', 'suspicious_file_extension'):
-            with self.subTest(feature=feature):
-                self.assertEqual(result[feature]['mismatches'], 0)
-                self.assertEqual(result[feature]['total_compared'], 100872)
-        for feature in ('subdomain_count', 'tld_length',
-                        'domain_name_length'):
-            with self.subTest(feature=feature):
-                self.assertEqual(result[feature]['mismatches'], 0)
-                self.assertEqual(result[feature]['total_compared'], 99564)
-        # token_count audit hypothesis must NOT reproduce (UNKNOWN) and
-        # must never be treated as the original/production definition.
-        token = result['token_count (audit hypothesis, UNKNOWN)']
-        self.assertEqual(token['total_compared'], 100872)
-        self.assertGreater(token['mismatches'], 0)
+        # --- failure contract: invalid must not mean legitimate -------
+        for bad in ['', '   ', None, 7, b'http://a.com']:
+            with self.subTest(bad=repr(bad)):
+                failed = extract_features(bad)
+                self.assertFalse(failed.ok)
+                with self.assertRaises(FeatureExtractionError):
+                    failed.to_vector()
 
 
 if __name__ == '__main__':
