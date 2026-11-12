@@ -2,6 +2,12 @@
 
 Status: prepared for coordination; not sent or approved. No new extractor implemented.
 
+Review update (2026-11-12): local review feedback was addressed on branch
+`shawky/security-dataset-audit` (app restoration, audit validation/evidence,
+test determinism and missing-input coverage). Eiad agreement on the items
+below is still pending; `test_production_feature_contract` remains skipped
+and no shared-extractor validation or integration is claimed.
+
 Please confirm:
 
 1. Importable shared parser/extractor module and function signature. It should import without starting the UI or accessing data/network.
