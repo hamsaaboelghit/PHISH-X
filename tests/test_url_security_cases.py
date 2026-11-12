@@ -24,7 +24,9 @@ from phishx.security_dataset_audit import (
     _safe_parse_hostname,
 )
 
-CASES = json.loads((ROOT / 'tests/cases/url_security_cases.json').read_text())
+CASES = json.loads(
+    (ROOT / 'tests/cases/url_security_cases.json').read_text(encoding='utf-8')
+)
 
 
 class URLSecurityCases(unittest.TestCase):

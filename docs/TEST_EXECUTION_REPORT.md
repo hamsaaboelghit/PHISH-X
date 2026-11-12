@@ -53,8 +53,12 @@ Characterization tests for `parse_hostname()`, `is_ip_address()` and
 `analyze_subdomain()` cover: `None`; integer and float inputs; empty and
 whitespace strings; `"Offline"` in multiple capitalizations; malformed
 URLs (broken IPv6 bracket, out-of-range port, embedded control
-character); and correct IPv4/IPv6. Invalid inputs return `None`/`False`
-and never raise. No production feature definitions were changed.
+character); and correct IPv4/IPv6. These tests characterize the current
+behavior of the existing audit helpers only — they do not prove that all
+malformed URLs are rejected, nor that a production extractor would be
+safe. Missing/non-string/empty/`Offline`/broken-bracket inputs return
+`None`/`False` and never raise, but other malformed inputs still yield
+hostnames (see below). No production feature definitions were changed.
 
 One safety fix was necessary: `is_ip_address()` previously passed
 non-string input to `ipaddress.ip_address()`, so integers/bools were
@@ -72,6 +76,22 @@ Not started. Awaiting Eiad's confirmed feature contract (module path,
 function interface, feature names/definitions, invalid-URL handling).
 `test_production_feature_contract` remains skipped. No alternative
 extractor or new feature definitions were created.
+
+## Production security limitations
+
+- The existing helper tests are **not** a substitute for production
+  feature validation. Passing them characterizes audit-helper behavior
+  only; it does not validate any production extractor.
+- Invalid ports, control characters, and percent-encoded hosts need
+  **explicit handling** in the production URL extractor. The current
+  helpers accept out-of-range port hosts, strip embedded newlines via
+  `urlsplit`, and return percent-encoded hosts unvalidated — production
+  must reject or normalize these by an agreed policy, not inherit the
+  helper behavior accidentally.
+- Task 4 stays **BLOCKED** until Eiad confirms the module path, function
+  interface, feature definitions, and invalid-URL behavior. No
+  production extractor tests are claimed complete before that agreement
+  and integration actually happen.
 
 ## Verification summary
 
