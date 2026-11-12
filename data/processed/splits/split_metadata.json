@@ -1,0 +1,23 @@
+{
+    "dataset": "cleaned_dataset.csv",
+    "total_records": 100872,
+    "test_size_requested": 0.2,
+    "random_state": 42,
+    "target_column": "ClassLabel",
+    "label_mapping": {
+        "0": "Phishing",
+        "1": "Legitimate"
+    },
+    "primary_evaluation_strategy": "Group Split by Host",
+    "comparison_strategy": "Random Stratified Split",
+    "random_split": {
+        "train_records": 80697,
+        "test_records": 20175,
+        "shared_hosts": 4734
+    },
+    "group_split": {
+        "train_records": 81165,
+        "test_records": 19707,
+        "shared_hosts": 0
+    }
+}

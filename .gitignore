@@ -228,6 +228,15 @@ __marimo__/
 # Dataset files
 data/raw/*
 data/processed/*
+
+# Allow shared project datasets
+!data/raw/url_features_extracted1.csv
+!data/processed/cleaned_dataset.csv
+!data/processed/splits/
+!data/processed/splits/*.csv
+!data/processed/splits/*.json
+
+# Keep folders
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
