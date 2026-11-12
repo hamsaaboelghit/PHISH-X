@@ -506,6 +506,17 @@ def safe_hostname(url):
 
 
 def extract_basic_signals(url):
+<<<<<<< Updated upstream
+=======
+    # Display helper for the URL Investigation page ONLY. This is NOT the
+    # production feature extractor and its output must never be fed to a
+    # model. The production extractor is
+    # ``phishx.features.url_features.extract_features`` (16 features in
+    # ``FEATURE_NAMES`` order); security diagnostics live in
+    # ``phishx.features.url_signals.analyze_url_security`` and are kept
+    # separate from the model feature vector. See
+    # ``docs/URL_SECURITY_AND_FEATURE_SPECIFICATION.md`` section 10.1.
+>>>>>>> Stashed changes
     normalized = url.strip()
 
     try:

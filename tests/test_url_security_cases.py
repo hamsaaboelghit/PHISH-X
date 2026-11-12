@@ -1,9 +1,15 @@
-"""Offline tests of EXISTING audit helpers, not production extractor acceptance.
+"""Offline tests of EXISTING audit helpers plus the production contract.
 Run: python -m unittest discover -s tests -v
-Production feature assertions await Eiad's contract (see handoff document).
 
-Characterization tests below document current audit-helper behavior only;
-passing them does not approve that behavior as production behavior.
+The characterization tests below document current audit-helper behavior
+only; passing them does not approve that behavior as production behavior.
+The 28 synthetic cases in ``tests/cases/url_security_cases.json`` exercise
+the OLD audit helpers (``subdomain_audit``), NOT the new production
+parser/extractor. Production acceptance is asserted separately in
+``test_production_feature_contract`` against the shared extractor
+``phishx.features.url_features`` (contract confirmed by Eiad's review of
+``origin/eyad``; see ``docs/EIAD_SECURITY_TEST_HANDOFF.md``).
+
 Network access is blocked for every test (see setUp).
 """
 import json
@@ -136,10 +142,96 @@ class URLSecurityCases(unittest.TestCase):
                     'host must be a string or null',
                 )
 
-    @unittest.skip('Blocked: Eiad must confirm shared extractor module, interface and feature semantics.')
     def test_production_feature_contract(self):
-        """Intentionally no invented import, adapter, or competing implementation."""
+        """Production extractor contract (Eiad-confirmed, origin/eyad review).
+
+        Shared extractor: ``phishx.features.url_features``.
+        Interface: ``extract_features(url) -> UrlFeatures`` and
+        ``extract_features_batch(urls) -> list[UrlFeatures]``.
+        Feature order/semantics: the 16 dataset features in
+        ``FEATURE_NAMES`` order (spec version ``1.0-legacy``).
+
+<<<<<<< Updated upstream
+=======
+        The extractor ALWAYS returns all 16 features. A model-side
+        subset (e.g. a 5-feature baseline) is a training-time selection
+        by name from ``FEATURE_NAMES`` — it is not a competing extractor
+        and must not redefine any feature. This test therefore pins the
+        16-feature extractor contract; which subset the AI team trains
+        on remains a model decision outside this contract.
+        """
+        from phishx.features.url_features import (
+            FEATURE_NAMES,
+            FEATURE_SPEC_VERSION,
+            FeatureExtractionError,
+            extract_features,
+            extract_features_batch,
+        )
+
+        # --- module / version / feature order -------------------------
+        self.assertEqual(FEATURE_SPEC_VERSION, '1.0-legacy')
+        self.assertEqual(
+            FEATURE_NAMES,
+            (
+                'url_length', 'has_ip_address', 'dot_count', 'https_flag',
+                'url_entropy', 'token_count', 'subdomain_count',
+                'query_param_count', 'tld_length', 'path_length',
+                'has_hyphen_in_domain', 'number_of_digits',
+                'tld_popularity', 'suspicious_file_extension',
+                'domain_name_length', 'percentage_numeric_chars',
+            ),
+        )
+        self.assertEqual(len(FEATURE_NAMES), 16)
+
+        # --- happy path: structure, order, hand-computed values -------
+        result = extract_features('http://a.com/')
+        self.assertTrue(result.ok)
+        self.assertEqual(tuple(result.features), FEATURE_NAMES)
+        self.assertEqual(len(result.to_vector()), 16)
+        self.assertEqual(
+            result.to_vector(),
+            [result.features[name] for name in FEATURE_NAMES],
+        )
+        expected = {
+            'url_length': 13,
+            'has_ip_address': 0,
+            'dot_count': 1,
+            'https_flag': 0,
+            'token_count': 5,  # 1 + 1 '.' + 3 '/'
+            'subdomain_count': 0,
+            'query_param_count': 1,  # minimum is 1, never 0
+            'tld_length': 3,
+            'path_length': 1,
+            'has_hyphen_in_domain': 0,
+            'number_of_digits': 0,
+            'tld_popularity': 1,
+            'suspicious_file_extension': 0,
+            'domain_name_length': 1,
+            'percentage_numeric_chars': 0.0,
+        }
+        for name, value in expected.items():
+            with self.subTest(feature=name):
+                self.assertEqual(result.features[name], value)
+
+        # --- determinism ----------------------------------------------
+        again = extract_features('http://a.com/')
+        self.assertEqual(result, again)
+
+        # --- batch preserves order ------------------------------------
+        batch = extract_features_batch(['http://a.com/', 'https://b.org/x'])
+        self.assertEqual(len(batch), 2)
+        self.assertTrue(all(r.ok for r in batch))
+        self.assertEqual(batch[0], result)
+
+        # --- failure contract: invalid must not mean legitimate -------
+        for bad in ['', '   ', None, 7, b'http://a.com']:
+            with self.subTest(bad=repr(bad)):
+                failed = extract_features(bad)
+                self.assertFalse(failed.ok)
+                with self.assertRaises(FeatureExtractionError):
+                    failed.to_vector()
 
 
+>>>>>>> Stashed changes
 if __name__ == '__main__':
     unittest.main()

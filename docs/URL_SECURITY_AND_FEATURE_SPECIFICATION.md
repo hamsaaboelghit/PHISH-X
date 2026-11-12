@@ -6,7 +6,11 @@
 | **Owner** | Eiad — Security Lead & URL Feature Engineering |
 | **Status** | **IMPLEMENTED — aligned with the requirements supplied for this task** |
 | **Code** | `src/phishx/features/url_parser.py`, `url_features.py`, `url_signals.py` |
+<<<<<<< Updated upstream
 | **Tests** | `tests/` (188 tests, including full-dataset parity) |
+=======
+| **Tests** | `tests/` (202 passed, 0 skipped, 136 subtests on this branch after the review follow-up; including full-dataset parity and the enabled production contract) |
+>>>>>>> Stashed changes
 | **Network access** | None. All analysis is local string processing. No URL is ever visited, resolved or requested. |
 
 Evidence tags used in this document:
@@ -23,7 +27,11 @@ Evidence tags used in this document:
 2. The original extraction code is not in the repository. The definitions below are therefore *inferred from the data*, not copied from the author's code. They are exact on every observed row, but behaviour on inputs that do not occur in the dataset (e.g. uppercase TLDs, IPv6 hosts) is [A].
 3. The definitions are **legacy**: several are naive (no Public Suffix List, port text counted inside the TLD, empty host for URLs without a scheme). They were **not changed**, because a model trained on the dataset must be fed the same definitions. Weak spots are reported at run time through `warnings`, and documented here.
 4. Several features are **shortcuts** that identify *how the dataset was collected* rather than phishing behaviour (section 9): `has_ip_address`, `https_flag`, port-in-TLD (`tld_length`), `tld_popularity`, `suspicious_file_extension`, and the scheme-less rows. Accuracy on this dataset must be interpreted accordingly (consistent with the IP-only baseline of 85.55 % in `DATASET_AND_EVALUATION_PROTOCOL.md`).
+<<<<<<< Updated upstream
 5. Nothing in the dataset, the Streamlit page or any teammate's file was modified.
+=======
+5. The datasets and the fixed train/test splits were not modified. The Streamlit page (`app/main.py`) **was** modified in this delivery (URL Investigation page and display helpers); see section 10.1 for the app integration contract. An earlier draft of this document incorrectly stated that `app/main.py` was unmodified.
+>>>>>>> Stashed changes
 
 ---
 
@@ -38,7 +46,11 @@ Result:
 | Rows compared | 101,219 raw rows (cleaned file: 100,872) |
 | Features compared | 16 |
 | Mismatches | **0** |
+<<<<<<< Updated upstream
 | Python version verified for this delivery | 3.13.5; other versions require separate CI evidence |
+=======
+| Python version verified for this delivery | 3.13.5 (original delivery); 3.13.16 (review follow-up). Other versions require separate CI evidence (GitHub Actions matrix: 3.10–3.13) |
+>>>>>>> Stashed changes
 | Reproduce | `python -m pytest tests/test_dataset_parity.py` |
 
 The parser is a self-contained re-implementation of `urllib.parse.urlparse` as it behaved when the dataset was built (`legacy_split`). It does **not** call `urllib.parse`, because `urlparse` changed behaviour across Python versions (e.g. scheme detection, control-character stripping, bracket validation), which would silently change feature values. One raw row (`64.233.14.37.dynamic.jazztel.es:84/`) already differs between Python 3.13's `urlparse` and the original; `legacy_split` reproduces the original. [D]
@@ -121,6 +133,20 @@ r.as_dict()     # JSON-safe (NaN -> None)
 * Feature order = dataset column order: `url_length, has_ip_address, dot_count, https_flag, url_entropy, token_count, subdomain_count, query_param_count, tld_length, path_length, has_hyphen_in_domain, number_of_digits, tld_popularity, suspicious_file_extension, domain_name_length, percentage_numeric_chars`.
 * Batch helper: `extract_features_batch(urls)`.
 
+<<<<<<< Updated upstream
+=======
+### 4.1 Production feature contract (Eiad-confirmed)
+
+The shared production extractor is `phishx.features.url_features` with the interface above. The contract, confirmed by Eiad's review of `origin/eyad` and asserted by `test_production_feature_contract` in `tests/test_url_security_cases.py`, is:
+
+* **Module:** `src/phishx/features/url_features.py` (imports without starting the UI or accessing data/network).
+* **Interface:** `extract_features(url) -> UrlFeatures`, `extract_features_batch(urls) -> list[UrlFeatures]`, `FEATURE_NAMES`, `FEATURE_SPEC_VERSION = "1.0-legacy"`.
+* **Feature order/semantics:** the 16 dataset features in `FEATURE_NAMES` order (section 5). The extractor **always returns all 16**; `to_vector()` emits them in that order.
+* **16-feature extractor vs 5-feature baseline:** the extractor contract is 16 features. A model-side subset (e.g. a 5-feature baseline) is a training-time selection **by name** from `FEATURE_NAMES` — it is not a competing extractor and must not redefine any feature. Which subset the AI team trains on remains a model decision outside this contract; no second extractor exists.
+* **Failure contract:** invalid input gives `ok=False` (never a legitimate-looking vector); `to_vector()` raises on failure. Invalid must not mean legitimate.
+* **Offline:** pure string processing; no network, DNS, or file access. Network is blocked in every test (`setUp` patches `socket`).
+
+>>>>>>> Stashed changes
 ---
 
 ## 5. Feature specification
@@ -153,7 +179,11 @@ Legend — **Status**: ✅ keep as defined · ⚠ keep, interpret with caution �
 Two parsers exist on purpose (see module docstring):
 
 * **Legacy split** (`legacy_split`) → used only for the 16 model features. Reproduces the dataset.
+<<<<<<< Updated upstream
 * **Strict parse** (`parse_url`) → used for warnings and `url_signals`; understands what a browser would do. Never used for model features.
+=======
+* **Strict parse** (`parse_url`) → used for warnings and `url_signals`; a security-oriented, browser-aware reading (not a full WHATWG implementation — see section 11.8). Never used for model features.
+>>>>>>> Stashed changes
 
 | Input | Legacy split (model features) | Strict parse (diagnostics) |
 |---|---|---|
@@ -163,12 +193,20 @@ Two parsers exist on purpose (see module docstring):
 | `localhost:8080` | no scheme (rest is all digits) | host `localhost`, port 8080 |
 | **Protocol-relative** `//example.com/a` | scheme `""`, netloc `example.com` | `is_protocol_relative=True`, host `example.com` |
 | `HTTPS://Example.COM/` | scheme lower-cased; host text untouched, TLD matched lower-case [A1] | host lower-cased |
+<<<<<<< Updated upstream
 | `http:/example.com`, `http:\\evil.com\x` | no netloc (single slash) / backslash not a delimiter | repaired like browsers: host `example.com` / `evil.com`, path `/x` [R5] |
+=======
+| `http:/example.com`, `http:\\evil.com\x` | no netloc (single slash) / backslash not a delimiter | browser-aware repair: host `example.com` / `evil.com`, path `/x` [R5] |
+>>>>>>> Stashed changes
 | **IPv4** `http://192.168.0.1:8080/x` | netloc `192.168.0.1:8080`; last label `1:8080`; `has_ip_address=1` | host_kind `ipv4`, port 8080 |
 | **IPv6** `http://[2001:db8::1]:8080/` | netloc `[2001:db8::1]:8080` (no dots → 1 label); `has_ip_address=0`; warning `ipv6_not_detected` | host `2001:db8::1`, host_kind `ipv6` [R6] |
 | **Obfuscated IPv4** `http://2130706433/`, `0x7f.1`, `0177.0.0.1` | `has_ip_address=0`; warning `obfuscated_ipv4_not_detected` | host_kind `ipv4_obfuscated` (WHATWG IPv4 parser) [R5] |
 | **User-info trick** `http://paypal.com@evil.example/` | netloc keeps `paypal.com@evil.example`; `tld_length` from `example`; warning `host_contains_userinfo` | `userinfo="paypal.com"`, host `evil.example`, signal `userinfo_contains_dot` [R4] |
+<<<<<<< Updated upstream
 | Ports `:8080`, `:99999`, `:` | port text stays in last label; warning `host_contains_port` | valid port int; `99999` → `port_valid=False`; empty port valid |
+=======
+| Ports `:8080`, `:99999`, `:` | port text stays in last label; warning `host_contains_port` | valid port int; `99999` → `port_valid=False`, signal `has_invalid_port=True` (never read as a safe default); empty port valid |
+>>>>>>> Stashed changes
 | Query / fragment / params | `#` split first, then `?`; `;params` split off the last path segment for http(s)/ftp… | `#` then `?` |
 | **Trailing-dot host** `example.com.` | last label is `""` → `tld_length=0` | host `example.com`, `host_had_trailing_dot=True` |
 | **Double scheme** `http://http://x/a.exe` | netloc `http:` → single label → `subdomain_count=-1`, `tld_length=5` | host `http`; signal `double_scheme` |
@@ -176,6 +214,11 @@ Two parsers exist on purpose (see module docstring):
 | **Punycode** `xn--…` | counted as ASCII text | signal `has_punycode_label` |
 | Percent-escapes `%41` | **never decoded** (3 chars each) | counted in `percent_escape_count`; `%` in host flagged |
 | Opaque scheme `javascript:`, `mailto:`, `data:` | scheme set, empty netloc → `no_authority` | `is_opaque_scheme=True`, no host |
+<<<<<<< Updated upstream
+=======
+| Opaque scheme with digits `javascript:123`, `data:123` | no scheme (rest is all digits, so the legacy rule treats the whole string as path) | `is_opaque_scheme=True`, no host (known opaque schemes win over the host:port reading) |
+| Schemeless host:port `example.com:8080`, `localhost:8080` | `example.com` is read as a scheme (rest not all digits); `localhost` is not (rest all digits) | `authority_source="implied"`, host + port |
+>>>>>>> Stashed changes
 | Embedded URL `?u=http://other` | no special handling (`://` just adds separators) | signal `embedded_url_in_path_or_query` |
 | Leading/trailing whitespace | stripped at API boundary [A2] | stripped |
 | Tabs, CR, LF **inside** the URL | deleted (as `urllib` does) [R11] | deleted |
@@ -221,7 +264,11 @@ A warning marks a result whose *legacy value is structurally unreliable*. It nev
 | `host_contains_userinfo` | `user@` is part of the netloc |
 | `ip_pattern_outside_host` | `has_ip_address=1` but the host is not an IP (22 rows: paths, version numbers like `v0.4.5.10`) |
 | `ipv6_not_detected` | host is an IPv6 literal; `has_ip_address=0` |
+<<<<<<< Updated upstream
 | `obfuscated_ipv4_not_detected` | browser-valid IPv4 form; `has_ip_address=0` |
+=======
+| `obfuscated_ipv4_not_detected` | browser-accepted IPv4 form; `has_ip_address=0` |
+>>>>>>> Stashed changes
 | `single_label_host` | no dot in host (e.g. `localhost`, `http:`): `subdomain_count=-1` |
 
 ---
@@ -263,7 +310,18 @@ If the team later wants security features that survive these biases, candidates 
 
 ## 10. Overlap with existing work
 
+<<<<<<< Updated upstream
 ### 10.1 `extract_basic_signals()` in `app/main.py` (not modified)
+=======
+### 10.1 `extract_basic_signals()` in `app/main.py` — app integration contract
+
+`app/main.py` **was** modified in this delivery (URL Investigation page, display helpers, and related UI). An earlier draft of this document incorrectly stated that it was unmodified. The integration contract is:
+
+* `extract_basic_signals()` in `app/main.py` is a **display helper only**. It is separate from the production extractor and its output must never be fed to a model. (A clarifying comment was added at the function in the review follow-up; no UI/logic was changed.)
+* The **production extractor** is `phishx.features.url_features.extract_features` (16 features in `FEATURE_NAMES` order). Anything shown as "model input" must come from it.
+* **Security diagnostics** (`phishx.features.url_signals.analyze_url_security`) are kept **separate** from the model feature vector. They may be shown as explanations, but must not be mixed into model input.
+* The production extractor is **not yet wired into prediction** in the app. Wiring it in is a separate, reviewed step; until then the URL Investigation page shows preliminary structural signals only and states that they are not a classification.
+>>>>>>> Stashed changes
 
 | Streamlit signal | Compared with dataset definition | Consequence |
 |---|---|---|
@@ -275,7 +333,11 @@ If the team later wants security features that survive these biases, candidates 
 | Hostname length | not a dataset feature | dataset uses `domain_name_length` (2nd-to-last label) |
 | Coverage | 9 display signals, 7 of the 16 features missing (entropy, tokens, subdomains, TLD length/popularity, extension, % digits) | cannot feed the model |
 
+<<<<<<< Updated upstream
 Recommendation: keep it as a *display helper*; the URL Investigation page should call `extract_features()` for anything shown as "model input" and `analyze_url_security()` for explanations. Not duplicated, not changed.
+=======
+Recommendation: keep it as a *display helper*; the URL Investigation page should call `extract_features()` for anything shown as "model input" and `analyze_url_security()` for explanations. Note: `app/utils/url_helpers.py` duplicates the same helpers as standalone functions, but `app/main.py` currently uses its inline copies and does not import `url_helpers`; deduplication is a future cleanup, not part of this delivery.
+>>>>>>> Stashed changes
 
 ### 10.2 Shawky's audit scripts (not modified)
 
@@ -299,7 +361,11 @@ These scripts remain valid as audit tooling; this document supersedes their *hyp
 5. **Percent-encoding is never decoded**, and Unicode is not normalised (NFKC/IDNA 2008) for the model features.
 6. **No reputation data**: no blocklists, shortener lists, brand lists, WHOIS/DNS or certificate data — all would require network or external data and are excluded by the offline rule.
 7. **Dataset bias dominates** (section 9). A correct extractor cannot repair a biased label source; reported accuracy must be read with the group split and the IP-only baseline in mind.
+<<<<<<< Updated upstream
 8. **Behaviour tied to `urlparse` semantics** of the dataset generator can differ from what modern browsers do (backslashes, single slashes, whitespace). The strict parser covers browser-like reading but is not a full WHATWG implementation (no full IPv6 canonicalisation, no IDNA 2008/UTS #46 processing — it uses Python's IDNA 2003 codec).
+=======
+8. **Behaviour tied to `urlparse` semantics** of the dataset generator can differ from what modern browsers do (backslashes, single slashes, whitespace). The strict parser is a security-oriented, browser-aware parser — it covers the browser-like readings that matter for diagnostics but is not a full WHATWG implementation and must not be described as browser-equivalent (no full IPv6 canonicalisation, no IDNA 2008/UTS #46 processing — it uses Python's IDNA 2003 codec).
+>>>>>>> Stashed changes
 9. **Extraction speed** is ~100 k URLs in a few seconds (pure Python); not optimised for millions.
 10. The extension list is fixed at the six observed suffixes; absence of other types from the dataset flags is observed, not intended.
 
@@ -309,10 +375,18 @@ These scripts remain valid as audit tooling; this document supersedes their *hyp
 
 ```bash
 python -m pip install pytest pandas
+<<<<<<< Updated upstream
 python -m pytest tests -q                      # 188 tests, ~4 s
 ```
 
 GitHub Actions workflow: `.github/workflows/tests.yml` runs the suite on Python 3.10–3.13 after push / pull request. This archive was locally verified on Python 3.13.5; the other matrix results will be available in GitHub Actions after upload.
+=======
+python -m pytest tests -q                      # 202 passed, 0 skipped, 136 subtests, ~4 s
+python -m compileall -q src tests app          # includes app/
+```
+
+GitHub Actions workflow: `.github/workflows/tests.yml` runs the suite on Python 3.10–3.13 after push / pull request. This branch was locally verified on Python 3.13.16 (202 passed, 0 skipped, 136 subtests); the other matrix results will be available in GitHub Actions after push. The 28 synthetic cases in `tests/cases/url_security_cases.json` exercise the old audit helpers, not the production parser; production acceptance is asserted by `test_production_feature_contract` and the `test_url_*` suites.
+>>>>>>> Stashed changes
 
 ```bash
 python -m pytest tests/test_dataset_parity.py  # full-dataset parity only

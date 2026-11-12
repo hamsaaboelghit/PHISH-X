@@ -17,10 +17,20 @@ Two views of a URL are provided:
    ``docs/URL_SECURITY_AND_FEATURE_SPECIFICATION.md``.
 
 2. STRICT view (``parse_url``)
+<<<<<<< Updated upstream
    A security-oriented interpretation used for diagnostics and for the
    URL Investigation page. It separates user-info, host and port,
    understands schemeless and protocol-relative input, IPv4 / IPv6 /
    obfuscated IPv4 hosts and internationalised domain names.
+=======
+   A security-oriented, browser-aware interpretation used for diagnostics
+   and for the URL Investigation page. It separates user-info, host and
+   port, understands schemeless and protocol-relative input, IPv4 / IPv6 /
+   obfuscated IPv4 hosts and internationalised domain names. It is NOT a
+   full WHATWG URL implementation (no complete IPv6 canonicalisation, no
+   IDNA 2008 / UTS #46 processing); it covers the browser-like readings
+   that matter for phishing diagnostics.
+>>>>>>> Stashed changes
 
 The two views are deliberately separate: the legacy view feeds the model,
 the strict view feeds explanations. Mixing them would silently change the
@@ -40,6 +50,10 @@ __all__ = [
     "UrlParseError",
     "default_port_for",
     "legacy_split",
+<<<<<<< Updated upstream
+=======
+    "normalize_url_text",
+>>>>>>> Stashed changes
     "parse_ipv4_whatwg",
     "parse_url",
 ]
@@ -79,6 +93,31 @@ _HOST_PORT_RE = re.compile(r"^[^/?#:@]+:[0-9]+(?:[/?#]|$)")
 #: ``scheme:`` for non-hierarchical schemes (mailto:, javascript:, data:).
 _OPAQUE_SCHEME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9+.\-]*):")
 
+<<<<<<< Updated upstream
+=======
+#: Schemes that are always opaque (no authority), even when what follows
+#: the colon is all digits. Without this, ``javascript:123`` and
+#: ``data:123`` match ``_HOST_PORT_RE`` and are misread as a schemeless
+#: ``host:port``. A genuine schemeless host:port such as
+#: ``example.com:8080`` (or ``localhost:8080``) is NOT in this list, so
+#: the host:port reading is preserved for it. Unknown single-label
+#: ``scheme:digits`` input keeps the host:port (address-bar) reading.
+_KNOWN_OPAQUE_SCHEMES = frozenset(
+    {
+        # Script schemes (execute, never navigate to a host).
+        "javascript", "vbscript", "jscript", "livescript", "mocha",
+        # Data / document schemes.
+        "data", "blob", "about", "chrome", "view-source", "feed",
+        # Messaging schemes.
+        "mailto", "mid", "cid", "news", "nntp",
+        # Telephony schemes.
+        "tel", "sms", "smsto", "callto", "skype", "facetime",
+        # Payment / misc non-hierarchical schemes.
+        "bitcoin", "ethereum", "magnet", "urn", "intent", "market",
+    }
+)
+
+>>>>>>> Stashed changes
 _DEFAULT_PORTS = {"http": 80, "https": 443, "ftp": 21, "ws": 80, "wss": 443}
 
 
@@ -330,6 +369,26 @@ def _to_ascii(host: str) -> str | None:
         return None
 
 
+<<<<<<< Updated upstream
+=======
+def normalize_url_text(url: str) -> str:
+    """Return the canonical text form used by the strict parser.
+
+    Leading/trailing whitespace is stripped and ``\\t``, ``\\r``, ``\\n``
+    are deleted everywhere (the same treatment ``urllib.parse`` applies
+    since the CVE-2022-0391 / bpo-43882 fix). Every consumer that
+    inspects the raw text — the strict parser and the advisory signals
+    in ``url_signals`` — must use this helper so that, for example, a
+    tab hidden inside ``http://ht\\ttp://...`` cannot make the parser
+    and the ``double_scheme`` check disagree about the same input.
+    """
+    text = url.strip()
+    for ch in _DELETED_CHARS:
+        text = text.replace(ch, "")
+    return text
+
+
+>>>>>>> Stashed changes
 def parse_url(url: str) -> ParsedURL:
     """Parse ``url`` into a :class:`ParsedURL` (never touches the network).
 
@@ -339,9 +398,13 @@ def parse_url(url: str) -> ParsedURL:
     """
     if not isinstance(url, str):
         raise UrlParseError("url must be a string")
+<<<<<<< Updated upstream
     text = url.strip()
     for ch in _DELETED_CHARS:
         text = text.replace(ch, "")
+=======
+    text = normalize_url_text(url)
+>>>>>>> Stashed changes
     if not text:
         raise UrlParseError("url is empty")
 
@@ -369,7 +432,19 @@ def parse_url(url: str) -> ParsedURL:
         authority_source = "explicit"
     else:
         m = _OPAQUE_SCHEME_RE.match(text)
+<<<<<<< Updated upstream
         if m and not _HOST_PORT_RE.match(text):
+=======
+        # A known opaque scheme wins over the host:port reading, so
+        # ``javascript:123`` / ``data:123`` are opaque (no host) rather
+        # than host ``javascript`` / ``data`` with port 123. Any other
+        # ``host:digits`` shape keeps the schemeless host:port reading
+        # (``example.com:8080``, ``localhost:8080``).
+        if m and (
+            m.group(1).lower() in _KNOWN_OPAQUE_SCHEMES
+            or not _HOST_PORT_RE.match(text)
+        ):
+>>>>>>> Stashed changes
             scheme = m.group(1).lower()
             has_explicit_scheme = True
             is_opaque = True

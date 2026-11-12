@@ -18,6 +18,31 @@ def test_nondefault_port():
     assert not analyze("http://a.com/").has_nondefault_port
 
 
+<<<<<<< Updated upstream
+=======
+def test_invalid_port_is_visible_and_not_read_as_default():
+    """An invalid port must be surfaced, not mistaken for a safe default."""
+    s = analyze("http://a.com:99999/")
+    assert s.parsed and not s.port_valid
+    assert s.has_invalid_port
+    assert not s.has_nondefault_port  # invalid != default, but also != nondefault
+    assert s.port is None
+    # A valid default port is neither invalid nor nondefault.
+    ok = analyze("http://a.com:80/")
+    assert not ok.has_invalid_port and not ok.has_nondefault_port
+    # No port at all is neither invalid nor nondefault.
+    none = analyze("http://a.com/")
+    assert not none.has_invalid_port and not none.has_nondefault_port
+
+
+def test_signals_use_parser_normalisation_for_raw_text_checks():
+    """Tabs/newlines deleted by the parser must not hide a double scheme."""
+    assert analyze("http://ht\ttp://evil.example/").double_scheme
+    assert analyze("http://http://evil.example/").double_scheme
+    assert not analyze("http://a.com/").double_scheme
+
+
+>>>>>>> Stashed changes
 def test_punycode_and_unicode_host():
     assert analyze("http://xn--pple-43d.com").has_punycode_label
     s = analyze("http://bücher.example/")
