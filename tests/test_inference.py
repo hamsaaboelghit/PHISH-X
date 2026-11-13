@@ -146,3 +146,25 @@ def test_load_model_artifact_rejects_missing_file(tmp_path):
 def test_prediction_rejects_failed_feature_extraction(bad_url):
     with pytest.raises(ValueError, match="feature extraction failed"):
         predict_url(bad_url, artifact())
+
+
+def test_security_assessment_flags_misleading_userinfo_without_overriding_ml():
+    result = predict_url(
+        "http://example.com@evil.test/login",
+        artifact(),
+    )
+    assessment = result.security_assessment
+    assert result.prediction in {"Phishing", "Legitimate"}
+    assert assessment["status"] == "warning"
+    assert assessment["risk_level"] == "high"
+    assert assessment["actual_host"] == "evil.test"
+    assert assessment["findings"][0]["code"] == "misleading_userinfo"
+    assert assessment["findings"][0]["severity"] == "high"
+    assert result.as_dict()["security_assessment"] == assessment
+
+
+def test_security_assessment_has_no_flags_for_plain_example_url():
+    result = predict_url("https://example.com/login", artifact())
+    assert result.security_assessment["status"] == "no_structural_flags"
+    assert result.security_assessment["risk_level"] == "none"
+    assert result.security_assessment["findings"] == []
