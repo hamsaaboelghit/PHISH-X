@@ -1,164 +1,132 @@
+# PHISH-X — Dataset & Evaluation Protocol
 
-# PHISH-X
-## Dataset & Evaluation Protocol
+## 1. Objective and target labels
 
-### 1. Project Objective
+PHISH-X classifies URL strings into two classes:
 
-PHISH-X is an explainable AI-based phishing URL detection system.
+- `0` — Phishing
+- `1` — Legitimate
 
-The system aims to classify URLs into:
-- Phishing (0)
-- Legitimate (1)
+The project uses Logistic Regression trained with hand-implemented numerical optimization. The primary evaluation protocol is a fixed Group Split by Host.
 
-The project uses URL-derived numerical features and Logistic Regression, with numerical optimization methods forming a core part of the project.
+## 2. Dataset and feature contract
 
----
+The project uses the supplied LegitPhish dataset. The preprocessing and feature-specification documents record the cleaning decisions and legacy feature definitions.
 
-### 2. Dataset Information
+The extractor calculates the legacy URL feature set, while the current classifier consumes exactly five features, in this order:
 
-- Dataset: LegitPhish Dataset
-- Original records: 101,219
-- Original columns: 18
-- Cleaned records: 100,872
-- Final features and target columns: 18
+1. `url_length`
+2. `number_of_digits`
+3. `url_entropy`
+4. `dot_count`
+5. `path_length`
 
-Target mapping:
-- 0 = Phishing
-- 1 = Legitimate
+The target mapping and feature order are part of the model artifact contract. Do not change feature definitions or order without retraining and updating the artifact/version contract.
 
----
+**Historical count note:** older audit notes record 100,872 cleaned rows, while the checked-in `split_metadata.json` used by the current training run records 100,862 rows across the two group partitions. The current model run uses the committed split manifests (81,525 train + 19,337 test). Do not combine historical row/class totals with the current split counts as if they were one synchronized snapshot; reconcile the dataset CSV and manifests before publishing a single overall cleaned-row total.
 
-### 3. Data Cleaning Decisions
+## 3. Dataset quality and bias
 
-The following operations were performed:
+Prior audits identified important dataset shortcuts and collection effects:
 
-| Operation | Removed records |
-|---|---:|
-| Missing or invalid labels | 1 |
-| Missing or blank URLs | 0 |
-| Duplicate URLs | 346 |
-| Conflicting URL labels | 0 |
+- An IP-only rule achieved approximately 85.55% accuracy on the historical dataset snapshot.
+- Strict parsed-host analysis found a strong association between IP-literal hosts and the phishing class.
+- The legacy `has_ip_address` feature is a regex over the entire URL string, not a strict test of whether the parsed destination host is an IP; 22 observed rows explain the difference between the two counts.
+- `tld_popularity` also has a strong relationship with the target and requires caution.
+- Some legacy features are collection artefacts or naive lexical proxies rather than robust security properties.
 
-Final dataset:
-- 100,872 records
-- 63,492 Phishing
-- 37,380 Legitimate
-- No missing labels
-- No duplicate URLs
+These observations mean a high score on this dataset is not proof of broad real-world generalization. The detailed evidence and limitations are in:
 
-The original raw dataset was preserved without modification.
+- [URL Security & Feature Specification](URL_SECURITY_AND_FEATURE_SPECIFICATION.md)
+- [Security Dataset Audit](SECURITY_DATASET_AUDIT.md)
+- [Security evidence JSON](security_dataset_evidence.json)
 
-Output:
-`data/processed/cleaned_dataset.csv`
+## 4. Split strategies
 
----
+The checked-in `split_metadata.json` records:
 
-### 4. Dataset Quality Findings
+| Strategy | Train records | Test records | Shared hosts |
+|---|---:|---:|---:|
+| Random stratified | 80,689 | 20,173 | 4,805 |
+| Group Split by Host | 81,525 | 19,337 | 0 |
 
-The following findings require attention during model development:
+Both use a requested test size of 20% and random state 42. The random split is retained for comparison only. Group Split by Host is the primary evaluation because every host is assigned to one partition only.
 
-1. The dataset contains 64,001 unique hosts.
-2. All legitimate records use domain hosts.
-3. 48,894 phishing records use IP addresses.
-4. Only one host appeared in both classes: github.com.
-5. The `tld_popularity` feature has a strong relationship with the target and requires further investigation.
-6. Some stored features have not yet been validated against our own extraction definitions.
+The model training CLI reads the raw feature columns from the committed group manifests. The training scaler is fitted only on Group Train and is reused unchanged for Group Test and production inference.
 
-These findings indicate potential dataset bias and must be considered when interpreting model performance.
+## 5. Numerical training and evaluation
 
----
+The production model is a hand-implemented Logistic Regression classifier. It uses:
 
-### 5. Baseline Experiment
+- Manual population-variance standardization.
+- Stable sigmoid probability calculation.
+- Binary Cross-Entropy with L2 regularization.
+- Explicit analytical gradient and Hessian.
+- Batch Gradient Descent for numerical comparison.
+- Damped Newton-Raphson with backtracking line search.
+- Hand-implemented Gaussian Elimination with Partial Pivoting to solve the Newton system.
 
-An IP-only rule was tested:
+No scikit-learn estimator or optimizer is used to fit the Logistic Regression model. Scikit-learn remains a utility dependency for dataset splitting and compatibility/testing tasks.
 
-- IP Address → Phishing
-- Domain → Legitimate
+Run training from the repository root:
 
-Results:
+```powershell
+python src/phishx/models/train.py
+```
 
-| Metric | Result |
-|---|---:|
-| Accuracy | 85.55% |
-| Phishing Precision | 100% |
-| Phishing Recall | 77.04% |
-| Phishing F1-score | 87.03% |
+This generates a local Joblib artifact and `training_metrics.json` under `data/processed/model_artifacts/`.
 
-This experiment demonstrates that a single feature can achieve high accuracy on this dataset.
+## 6. Current reported held-out results
 
-Therefore, accuracy alone is insufficient to establish model quality.
+The project team's local run on 13 November 2026 evaluated 19,337 Group Test samples:
 
----
+| Metric | Phishing | Legitimate |
+|---|---:|---:|
+| Precision | 98.91% | 96.82% |
+| Recall | 97.90% | 98.34% |
+| F1-score | 98.41% | 97.57% |
 
-### 6. Dataset Splitting Strategy
+Overall accuracy: **98.08%**.
 
-Two splitting strategies were generated.
+Confusion matrix, with actual classes as rows and predicted classes as columns:
 
-#### A. Random Stratified Split
+| Actual | Predicted Phishing | Predicted Legitimate |
+|---|---:|---:|
+| Phishing | 11,481 | 246 |
+| Legitimate | 126 | 7,484 |
 
-- Training records: 80,697
-- Testing records: 20,175
-- Shared hosts: 4,734
+Training used Newton-Raphson with L2 = 0.001. The reported regularized loss decreased from 0.693147 to 0.061183 over 10 iterations.
 
-This split preserves class proportions but allows hosts to appear in both training and testing.
+These values are a reported local run on the supplied fixed split, not a live benchmark or a guarantee for future phishing campaigns. See [Final Project Report](FINAL_PROJECT_REPORT.md) for full interpretation.
 
-It will be used for comparison only.
+## 7. Reproducibility and validation
 
-#### B. Group Split by Host
+The split manifests and metadata are stored in `data/processed/splits/`. The loader validates:
 
-- Training records: 81,165
-- Testing records: 19,707
-- Shared hosts: 0
+- Required files and columns.
+- Non-empty URLs and unique URLs within each source.
+- No URL overlap between Group Train and Group Test.
+- Manifest host values against hosts extracted from URLs.
+- Manifest labels against the cleaned dataset.
+- No shared hosts between Group Train and Group Test.
+- Numeric and finite model features.
 
-All URLs belonging to the same host are assigned to the same partition.
+The full test suite is run with:
 
-This is the primary evaluation strategy because it tests performance on previously unseen hosts.
+```powershell
+python -m pytest -q
+```
 
----
+The latest team-reported local run: **319 passed, 1 skipped, 190 subtests passed**.
 
-### 7. Reproducibility
+## 8. Interpretation
 
-Both splitting strategies use:
+Phishing recall is security-critical because it measures how many phishing samples are correctly caught. Precision matters because false phishing alerts can disrupt legitimate users. Both class-specific metric sets must be reported; a single precision/recall pair is ambiguous when the positive label is Legitimate (1).
 
-- Test size: 20%
-- Random state: 42
+The model score, additive feature contributions, and structural security advisories are three different outputs:
 
-Generated files:
+- Model probabilities are produced by Logistic Regression.
+- Feature contributions explain the model logit in standardized feature space.
+- Security advisories are deterministic structural checks and do not change model probabilities.
 
-- `random_train.csv`
-- `random_test.csv`
-- `group_train.csv`
-- `group_test.csv`
-- `split_metadata.json`
-
-Location:
-`data/processed/splits/`
-
-The generated splits were validated for:
-- URL overlap
-- Host overlap in Group Split
-- Record counts
-- Class distributions
-
----
-
-### 8. Next Development Tasks
-
-1. Investigate dataset bias and feature leakage.
-2. Validate remaining URL features.
-3. Define the final feature extraction contract.
-4. Implement Logistic Regression using NumPy.
-5. Implement Gradient Descent and Newton's Method.
-6. Compare optimization methods.
-7. Evaluate using the fixed Group Split.
-8. Build explainability and the Streamlit workbench.
-
----
-
-### 9. Current Evaluation Decision
-
-Group Split by Host is the primary evaluation strategy.
-
-Random Stratified Split is retained as a comparison experiment.
-
-No model training has been performed yet.
+A positive feature contribution moves the model logit toward Legitimate; it does not prove that the raw feature is protective. A warning is not proof of phishing, and no warning is not proof of safety.
