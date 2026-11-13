@@ -132,11 +132,11 @@ The run emitted a bare-mode `ScriptRunContext` warning and deprecation warnings 
 
 ## 5. GitHub Actions status
 
-The latest push to `main` triggered the repository's URL feature test workflow. At the time this report was prepared, that push workflow was still in progress. The Core Inference and URL feature workflows associated with the immediately preceding documentation PR head had completed successfully.
-
-Always inspect the Actions page for the final status of the latest `main` commit before claiming that the newest remote CI run passed:
+GitHub Actions runs automatically on pushes and pull requests. Their status changes over time, so this document does not freeze a status that may become stale. Check the repository Actions page and confirm the run corresponds to the latest `main` commit before stating that remote CI passed:
 
 https://github.com/hamsaaboelghit/PHISH-X/actions
+
+The workflow matrix covers Python 3.10, 3.11, 3.12, and 3.13. The compile step now includes `app`, `src`, and `tests`.
 
 ## 6. Reproduction commands
 
