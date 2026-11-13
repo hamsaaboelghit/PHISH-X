@@ -6,7 +6,7 @@
 | **Owner** | Eiad — Security Lead & URL Feature Engineering |
 | **Status** | **IMPLEMENTED — aligned with the requirements supplied for this task** |
 | **Code** | `src/phishx/features/url_parser.py`, `url_features.py`, `url_signals.py` |
-| **Tests** | `tests/` (188 tests, including full-dataset parity) |
+| **Tests** | `tests/` (current team-reported suite: 319 passed, 1 skipped, 190 subtests; includes full-dataset parity) |
 | **Network access** | None. All analysis is local string processing. No URL is ever visited, resolved or requested. |
 
 Evidence tags used in this document:
@@ -309,10 +309,10 @@ These scripts remain valid as audit tooling; this document supersedes their *hyp
 
 ```bash
 python -m pip install pytest pandas
-python -m pytest tests -q                      # 188 tests, ~4 s
+python -m pytest -q                             # see docs/TEST_EXECUTION_REPORT.md for current result
 ```
 
-GitHub Actions workflow: `.github/workflows/tests.yml` runs the suite on Python 3.10–3.13 after push / pull request. This archive was locally verified on Python 3.13.5; the other matrix results will be available in GitHub Actions after upload.
+GitHub Actions workflow: `.github/workflows/tests.yml` runs the suite on Python 3.10–3.13 after push / pull request. The project team has reported a local full-suite run; consult docs/TEST_EXECUTION_REPORT.md and the GitHub Actions page for current verification status.
 
 ```bash
 python -m pytest tests/test_dataset_parity.py  # full-dataset parity only
