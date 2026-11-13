@@ -47,6 +47,11 @@ class PredictionResult:
     extraction_warnings: tuple[str, ...]
     security_signals: dict[str, Any]
 
+    @property
+    def label(self) -> str:
+        """Human-readable predicted class label."""
+        return self.prediction
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "url": self.url,
@@ -69,7 +74,7 @@ def _finite_scalar(value: Any, name: str) -> float:
         raise ArtifactContractError(f"{name} must be a finite number.")
     try:
         result = float(value)
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ArtifactContractError(f"{name} must be a finite number.") from exc
     if not np.isfinite(result):
         raise ArtifactContractError(f"{name} must be a finite number.")
@@ -92,7 +97,15 @@ def validate_artifact(artifact: Mapping[str, Any]) -> dict[str, Any]:
             + ", ".join(sorted(missing))
         )
 
-    columns = tuple(artifact.get("feature_columns", MODEL_FEATURES))
+    raw_columns = artifact.get("feature_columns", MODEL_FEATURES)
+    if isinstance(raw_columns, (str, bytes)):
+        raise ArtifactContractError("feature_columns must be a sequence of feature names.")
+    try:
+        columns = tuple(raw_columns)
+    except TypeError as exc:
+        raise ArtifactContractError(
+            "feature_columns must be a sequence of feature names."
+        ) from exc
     if columns != MODEL_FEATURES:
         raise ArtifactContractError(
             f"Artifact feature_columns must exactly equal {MODEL_FEATURES!r}."
@@ -104,7 +117,10 @@ def validate_artifact(artifact: Mapping[str, Any]) -> dict[str, Any]:
             f"Unsupported feature specification version: {version!r}."
         )
 
-    weights = np.asarray(artifact["weights"], dtype=float)
+    try:
+        weights = np.asarray(artifact["weights"], dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ArtifactContractError("Artifact weights must be numeric.") from exc
     if weights.shape != (len(MODEL_FEATURES),) or not np.isfinite(weights).all():
         raise ArtifactContractError(
             f"Artifact weights must be a finite vector of length {len(MODEL_FEATURES)}."
@@ -112,13 +128,25 @@ def validate_artifact(artifact: Mapping[str, Any]) -> dict[str, Any]:
 
     bias = _finite_scalar(artifact["bias"], "bias")
     threshold = _finite_scalar(artifact.get("threshold", 0.5), "threshold")
-    if not 0.0 < threshold < 1.0:
-        raise ArtifactContractError("threshold must be strictly between 0 and 1.")
+    if not 0.0 <= threshold <= 1.0:
+        raise ArtifactContractError("threshold must be between 0 and 1 inclusive.")
 
     label_mapping = artifact.get("label_mapping", EXPECTED_LABEL_MAPPING)
     if not isinstance(label_mapping, Mapping):
         raise ArtifactContractError("label_mapping must be a mapping.")
-    normalized_mapping = {int(k): str(v) for k, v in label_mapping.items()}
+    try:
+        normalized_mapping = {}
+        for key, value in label_mapping.items():
+            if isinstance(key, (bool, np.bool_)):
+                raise ValueError("boolean label keys are not supported")
+            normalized_key = int(key)
+            if normalized_key in normalized_mapping:
+                raise ValueError("duplicate normalized label key")
+            normalized_mapping[normalized_key] = str(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ArtifactContractError(
+            "label_mapping must map 0 to 'Phishing' and 1 to 'Legitimate'."
+        ) from exc
     if normalized_mapping != EXPECTED_LABEL_MAPPING:
         raise ArtifactContractError(
             "label_mapping must map 0 to 'Phishing' and 1 to 'Legitimate'."
@@ -127,7 +155,8 @@ def validate_artifact(artifact: Mapping[str, Any]) -> dict[str, Any]:
     scaler = artifact["scaler"]
     if not callable(getattr(scaler, "transform", None)):
         raise ArtifactContractError("Artifact scaler must provide transform().")
-    if hasattr(scaler, "n_features_in_") and scaler.n_features_in_ != len(MODEL_FEATURES):
+    scaler_feature_count = getattr(scaler, "n_features_in_", None)
+    if scaler_feature_count is not None and scaler_feature_count != len(MODEL_FEATURES):
         raise ArtifactContractError("Scaler feature count does not match model features.")
 
     return {
@@ -171,13 +200,19 @@ def predict_url(url: object, artifact: Mapping[str, Any]) -> PredictionResult:
         [[raw_features[name] for name in model["feature_columns"]]],
         columns=model["feature_columns"],
     )
-    scaled = np.asarray(model["scaler"].transform(frame), dtype=float)
+    try:
+        scaled = np.asarray(model["scaler"].transform(frame), dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ArtifactContractError("Scaler could not transform the model features.") from exc
     if scaled.shape != (1, len(MODEL_FEATURES)) or not np.isfinite(scaled).all():
         raise ArtifactContractError("Scaler returned an invalid transformed vector.")
 
     positive_probability = float(
         predict_proba(scaled, model["weights"], model["bias"])[0]
     )
+    if not np.isfinite(positive_probability) or not 0.0 <= positive_probability <= 1.0:
+        raise ArtifactContractError("Model returned an invalid probability.")
+
     predicted_label = int(positive_probability >= model["threshold"])
     logit, contributions = explain_logit(
         scaled[0], model["weights"], model["bias"], model["feature_columns"]
