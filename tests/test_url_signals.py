@@ -28,7 +28,7 @@ def test_invalid_port_is_reported_separately_from_default_port():
 
 
 def test_raw_text_security_checks_use_parser_normalization():
-    assert analyze("http://ht\\ttp://evil.example/").double_scheme
+    assert analyze("http://ht\ttp://evil.example/").double_scheme
     assert analyze("http://http://evil.example/").double_scheme
     assert not analyze("http://a.com/").double_scheme
 
