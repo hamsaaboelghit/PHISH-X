@@ -317,6 +317,8 @@ class SecurityDatasetAuditValidation(unittest.TestCase):
         json.dumps(result, allow_nan=False)
 
 
+
+
 class FeatureDefinitionsRepro(unittest.TestCase):
     def setUp(self):
         self._getaddrinfo_patcher = patch(
@@ -333,65 +335,97 @@ class FeatureDefinitionsRepro(unittest.TestCase):
         self.addCleanup(self._getaddrinfo_patcher.stop)
 
     def test_recompute_functions_known_examples(self):
-        # Query: & after first ? + 1, else 1 (not parsed params).
+        # Query: & after first ? + 1, else 1.
         self.assertEqual(
-            recompute_query_param_count('https://example.com/?a=1&b=2'), 2)
+            recompute_query_param_count('https://example.com/?a=1&b=2'), 2
+        )
         self.assertEqual(
-            recompute_query_param_count('https://example.com/'), 1)
-        # Subdomain: labels-2, no IP special case (IPv4 -> 2).
+            recompute_query_param_count('https://example.com/'), 1
+        )
+
+        # Subdomain: labels-2, no IP special case.
         self.assertEqual(
-            recompute_subdomain_count('http://192.0.2.10/login'), 2)
+            recompute_subdomain_count('http://192.0.2.10/login'), 2
+        )
         self.assertEqual(
-            recompute_subdomain_count('https://a.b.example.com/'), 2)
+            recompute_subdomain_count('https://a.b.example.com/'), 2
+        )
+
         # IP: anywhere in URL, not hostname-only.
         self.assertEqual(
-            recompute_has_ip_address('https://example.com/1.2.3.4/x'), 1)
+            recompute_has_ip_address('https://example.com/1.2.3.4/x'), 1
+        )
         self.assertEqual(
-            recompute_has_ip_address('https://example.com/'), 0)
+            recompute_has_ip_address('https://example.com/'), 0
+        )
+
         # Popularity: popular netloc final part, port included.
         self.assertEqual(
-            recompute_tld_popularity('https://example.com/', 0), 1)
+            recompute_tld_popularity('https://example.com/', 0), 1
+        )
         self.assertEqual(
-            recompute_tld_popularity('http://example.com:8888/', 0), 0)
+            recompute_tld_popularity('http://example.com:8888/', 0), 0
+        )
         self.assertEqual(
-            recompute_tld_popularity('https://example.com/', -1), 0)
+            recompute_tld_popularity('https://example.com/', -1), 0
+        )
+
         # Suspicious: path endswith, query ignored.
         self.assertEqual(
             recompute_suspicious_file_extension(
-                'http://example.com/a.exe?x=1'), 1)
+                'http://example.com/a.exe?x=1'
+            ), 1
+        )
         self.assertEqual(
             recompute_suspicious_file_extension(
-                'http://example.com/a.txt?x=evil.exe'), 0)
+                'http://example.com/a.txt?x=evil.exe'
+            ), 0
+        )
+
         # Lengths: port included in TLD part.
         self.assertEqual(
-            recompute_tld_length('http://example.com:8888/'), 8)
+            recompute_tld_length('http://example.com:8888/'), 8
+        )
         self.assertEqual(
-            recompute_domain_name_length('http://example.com:8888/'), 7)
+            recompute_domain_name_length('http://example.com:8888/'), 7
+        )
 
     def test_reproduce_full_dataset_confirmed_zero_mismatches(self):
         df = pd.read_csv(ROOT / 'data/processed/cleaned_dataset.csv')
         result = reproduce(df)
-        # Dataset size and sentinel cohort size.
-        self.assertEqual(len(df), 100872)
-        self.assertEqual(result['_sentinel_rows'], 1308)
-        # total_compared: sentinel-excluded features compare 99,564 rows;
-        # all-row features compare 100,872 rows.
-        for feature in ('query_param_count', 'has_ip_address',
-                        'tld_popularity', 'suspicious_file_extension'):
-            with self.subTest(feature=feature):
-                self.assertEqual(result[feature]['mismatches'], 0)
-                self.assertEqual(result[feature]['total_compared'], 100872)
-        for feature in ('subdomain_count', 'tld_length',
-                        'domain_name_length'):
-            with self.subTest(feature=feature):
-                self.assertEqual(result[feature]['mismatches'], 0)
-                self.assertEqual(result[feature]['total_compared'], 99564)
-        # token_count audit hypothesis must NOT reproduce (UNKNOWN) and
-        # must never be treated as the original/production definition.
-        token = result['token_count (audit hypothesis, UNKNOWN)']
-        self.assertEqual(token['total_compared'], 100872)
-        self.assertGreater(token['mismatches'], 0)
 
+        self.assertEqual(len(df), 100862)
+        self.assertEqual(result['_sentinel_rows'], 1298)
+
+        # All-row features.
+        for feature in (
+            'query_param_count',
+            'has_ip_address',
+            'tld_popularity',
+            'suspicious_file_extension',
+        ):
+            with self.subTest(feature=feature):
+                self.assertEqual(result[feature]['mismatches'], 0)
+                self.assertEqual(
+                    result[feature]['total_compared'], 100862
+                )
+
+        # Sentinel-excluded features.
+        for feature in (
+            'subdomain_count',
+            'tld_length',
+            'domain_name_length',
+        ):
+            with self.subTest(feature=feature):
+                self.assertEqual(result[feature]['mismatches'], 0)
+                self.assertEqual(
+                    result[feature]['total_compared'], 99564
+                )
+
+        # token_count remains an UNKNOWN audit hypothesis.
+        token = result['token_count (audit hypothesis, UNKNOWN)']
+        self.assertEqual(token['total_compared'], 100862)
+        self.assertGreater(token['mismatches'], 0)
 
 if __name__ == '__main__':
     unittest.main()

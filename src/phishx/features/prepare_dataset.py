@@ -2,6 +2,8 @@
 from pathlib import Path
 import pandas as pd
 
+from phishx.evaluation.create_dataset_split import extract_host
+
 
 # ============================================================
 # PHISH-X | DATA CLEANING & PREPARATION
@@ -62,14 +64,12 @@ def main():
 
     df = df[df["ClassLabel"].isin([0, 1])].copy()
 
-    removed_invalid_labels = (
-        before_label_filter - len(df)
-    )
+    removed_invalid_labels = before_label_filter - len(df)
 
     print("Removed invalid-label records:", removed_invalid_labels)
 
     # --------------------------------------------------------
-    # 4. Remove missing or blank URLs
+    # 4. Remove missing, blank, and invalid URLs
     # --------------------------------------------------------
 
     before_url_filter = len(df)
@@ -77,15 +77,19 @@ def main():
     valid_urls = (
         df["URL"].notna()
         & df["URL"].astype(str).str.strip().ne("")
+        & df["URL"].apply(
+            lambda url: extract_host(url) is not None
+        )
     )
 
     df = df[valid_urls].copy()
 
-    removed_invalid_urls = (
-        before_url_filter - len(df)
-    )
+    removed_invalid_urls = before_url_filter - len(df)
 
-    print("\n[3] Removed missing or blank URLs:", removed_invalid_urls)
+    print(
+        "\n[3] Removed missing, blank, or invalid URLs:",
+        removed_invalid_urls
+    )
 
     # --------------------------------------------------------
     # 5. Check conflicting labels before deduplication
@@ -120,9 +124,7 @@ def main():
         keep="first"
     ).copy()
 
-    removed_duplicates = (
-        before_deduplication - len(df)
-    )
+    removed_duplicates = before_deduplication - len(df)
 
     print("\n[5] Removed duplicate URL records:", removed_duplicates)
 
@@ -134,6 +136,9 @@ def main():
 
     assert df["URL"].notna().all()
     assert df["URL"].astype(str).str.strip().ne("").all()
+    assert df["URL"].apply(
+        lambda url: extract_host(url) is not None
+    ).all()
     assert df["ClassLabel"].notna().all()
     assert df["ClassLabel"].isin([0, 1]).all()
     assert not df["URL"].duplicated().any()
@@ -167,12 +172,13 @@ def main():
     print(f"Original records:       {original_count:,}")
     print(f"Removed invalid labels: {removed_invalid_labels:,}")
     print(f"Removed invalid URLs:   {removed_invalid_urls:,}")
-    print(f"Removed duplicates:    {removed_duplicates:,}")
+    print(f"Removed duplicates:     {removed_duplicates:,}")
     print("-" * 65)
     print(f"Final records:          {len(df):,}")
     print(f"Final columns:          {len(df.columns)}")
 
     print("\nFinal class distribution:")
+
     print(
         df["ClassLabel"]
         .value_counts()
@@ -193,3 +199,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

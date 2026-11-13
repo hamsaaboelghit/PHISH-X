@@ -1,6 +1,8 @@
+
 from pathlib import Path
 import json
 from urllib.parse import urlsplit
+
 import pandas as pd
 from sklearn.model_selection import train_test_split, GroupShuffleSplit
 
@@ -17,18 +19,38 @@ OUTPUT_DIR = ROOT / "data" / "processed" / "splits"
 RANDOM_STATE = 42
 TEST_SIZE = 0.20
 
-def extract_host(url):
 
-    value = str(url).strip()
+def extract_host(url):
+    """Extract a normalized hostname from a URL."""
+
+    if not isinstance(url, str):
+        return None
+
+    value = url.strip()
+
+    if not value or value.lower() in {"none", "nan", "null"}:
+        return None
 
     if "://" not in value:
         value = "//" + value
 
     try:
-        host = urlsplit(value).hostname
-        return host.lower() if host else None
+        parsed = urlsplit(value)
+        host = parsed.hostname
+
+        if not host:
+            return None
+
+        host = host.lower()
+
+        if "." not in host and host != "localhost":
+            return None
+
+        return host
+
     except (ValueError, AttributeError):
         return None
+
 
 def print_split_summary(name, train_df, test_df):
 
