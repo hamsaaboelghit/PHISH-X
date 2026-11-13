@@ -71,7 +71,7 @@ Known weaknesses include legacy parser behaviour, no Public Suffix List, limited
 
 ## 6. Final decision
 
-<badge>Approved with documented limitations</badge>
+**Approved with documented limitations**
 
 The dataset is usable for the course project when:
 
