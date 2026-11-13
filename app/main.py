@@ -112,6 +112,14 @@ st.markdown(
         max-width: 1600px;
     }
 
+    /* Hide Streamlit auto-discovered navigation; PHISH-X has its own WORKSPACE radio. */
+    [data-testid="stSidebarNav"],
+    [data-testid="stAppNav"],
+    [data-testid="stAppNavContainer"],
+    [data-testid="stPageLink-NavLink"] {
+        display: none !important;
+    }
+
     [data-testid="stSidebar"] {
         background: #0B1320;
         border-right: 1px solid #1B2B3F;
