@@ -208,6 +208,7 @@ docs/                         Detailed feature and security specification
 
 ## Further documentation
 
+- [Project Proposal Summary](docs/PROJECT_PROPOSAL.md)
 - [Final Project Report](docs/FINAL_PROJECT_REPORT.md)
 - [Presentation, Live Demo & Viva Guide](docs/DEMO_AND_VIVA_GUIDE.md)
 - [Dataset & Evaluation Protocol](docs/DATASET_AND_EVALUATION_PROTOCOL.md)
