@@ -114,14 +114,41 @@ def evaluate_model(artifact, X_test, y_test):
         else 0.0
     )
 
+    # Labels are fixed by the project contract: 0 = Phishing, 1 = Legitimate.
+    # Keep the legacy positive-class metrics for compatibility, but name the
+    # class explicitly and report precision/recall/F1 for both classes.
+    phishing_precision = tn / (tn + fn) if tn + fn else 0.0
+    phishing_recall = tn / (tn + fp) if tn + fp else 0.0
+    phishing_f1 = (
+        2.0 * phishing_precision * phishing_recall
+        / (phishing_precision + phishing_recall)
+        if phishing_precision + phishing_recall
+        else 0.0
+    )
+
     return {
         "samples": int(len(y_test)),
         "threshold": float(artifact["threshold"]),
+        "positive_class": "Legitimate",
         "accuracy": float(accuracy),
         "precision": float(precision),
         "recall": float(recall),
         "specificity": float(specificity),
         "f1_score": float(f1),
+        "class_metrics": {
+            "phishing": {
+                "label": 0,
+                "precision": float(phishing_precision),
+                "recall": float(phishing_recall),
+                "f1_score": float(phishing_f1),
+            },
+            "legitimate": {
+                "label": 1,
+                "precision": float(precision),
+                "recall": float(recall),
+                "f1_score": float(f1),
+            },
+        },
         "confusion_matrix": {
             "true_negative": tn,
             "false_positive": fp,

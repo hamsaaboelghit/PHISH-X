@@ -56,6 +56,14 @@ def test_evaluation_returns_complete_binary_metrics():
     assert 0.0 <= metrics["recall"] <= 1.0
     assert 0.0 <= metrics["specificity"] <= 1.0
     assert 0.0 <= metrics["f1_score"] <= 1.0
+    assert metrics["positive_class"] == "Legitimate"
+    assert set(metrics["class_metrics"]) == {"phishing", "legitimate"}
+    for class_result in metrics["class_metrics"].values():
+        assert 0.0 <= class_result["precision"] <= 1.0
+        assert 0.0 <= class_result["recall"] <= 1.0
+        assert 0.0 <= class_result["f1_score"] <= 1.0
+    assert metrics["class_metrics"]["phishing"]["label"] == 0
+    assert metrics["class_metrics"]["legitimate"]["label"] == 1
     assert sum(metrics["confusion_matrix"].values()) == len(y_train)
 
 
