@@ -1734,6 +1734,55 @@ elif page == "URL Investigation":
 
 
 # ============================================================
+# ============================================================
+# PROJECT TEAM
+# ============================================================
+
+st.markdown(
+    """
+    <div style="margin: 2.5rem 0 1rem 0;">
+        <div style="color:#20D9E6;font-size:0.72rem;font-weight:800;
+                    letter-spacing:0.18em;">THE PEOPLE BEHIND THE PROJECT</div>
+        <div style="color:#F4F7FB;font-size:1.65rem;font-weight:800;
+                    margin-top:0.35rem;">PROJECT TEAM</div>
+        <div style="color:#91A3B8;font-size:0.9rem;margin-top:0.35rem;">
+            The six-member team behind PHISH-X.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+team_members = [
+    ("Hamsa Aboelghit", "PROJECT LEAD / ARCHITECTURE & INTEGRATION"),
+    ("Noruhan Ali", "AI"),
+    ("Eyad Mohamed", "SECURITY"),
+    ("Roaa Elgarf", "AI"),
+    ("Shawky Ahmed", "SECURITY"),
+    ("Amina Sabry", "AI"),
+]
+
+team_columns = st.columns(3)
+for member_index, (member_name, member_role) in enumerate(team_members):
+    with team_columns[member_index % 3]:
+        st.markdown(
+            f"""
+            <div style="background:#101927;border:1px solid #1F3044;
+                        border-radius:12px;padding:1rem 1.05rem;
+                        min-height:100px;margin-bottom:0.8rem;">
+                <div style="color:#F4F7FB;font-size:0.98rem;
+                            font-weight:750;">{html.escape(member_name)}</div>
+                <div style="color:#20D9E6;font-size:0.68rem;
+                            font-weight:750;letter-spacing:0.07em;
+                            margin-top:0.55rem;">
+                    {html.escape(member_role)}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 # FOOTER
 # ============================================================
 
