@@ -62,13 +62,42 @@ def assess_security(
             "description": "The path or query contains another URL.",
         })
 
-    severity_rank = {"high": 2, "medium": 1, "low": 0}
-    highest = max((f["severity"] for f in findings), key=severity_rank.get, default=None)
+    host_kind = signals.get("host_kind")
+    if host_kind in {"ipv4", "ipv6"}:
+        findings.append({
+            "code": "ip_address_host",
+            "severity": "low",
+            "title": "Direct IP address used as destination",
+            "description": (
+                "The URL targets an IP address instead of a hostname. This can be "
+                "legitimate, especially on private networks, but the destination's "
+                "domain identity is not available; verify that this address is expected."
+            ),
+        })
+    elif host_kind == "ipv4_obfuscated":
+        findings.append({
+            "code": "obfuscated_ip_address",
+            "severity": "medium",
+            "title": "Obfuscated IP address used as destination",
+            "description": (
+                "The hostname appears to encode an IPv4 address in a non-standard "
+                "form. Treat it cautiously and verify the actual destination."
+            ),
+        })
+
+    severity_rank = {"high": 3, "medium": 2, "low": 1}
+    highest = max(
+        (f["severity"] for f in findings),
+        key=severity_rank.get,
+        default=None,
+    )
     status = "warning" if findings else "no_structural_flags"
     return {
         "status": status,
         "risk_level": highest or "none",
         "findings": findings,
         "actual_host": signals.get("host") or None,
-        "note": "Advisory structural checks; not an ML prediction or a guarantee of safety.",
+        "note": (
+            "Advisory structural checks; not an ML prediction or a guarantee of safety."
+        ),
     }

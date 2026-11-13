@@ -1357,31 +1357,55 @@ elif page == "URL Investigation":
 
                 with left:
                     st.markdown("#### Feature contribution to model logit")
-                    chart_df = contribution_df.sort_values(
+                    max_abs_contribution = max(
+                        (abs(float(value)) for value in contribution_df["Logit contribution"]),
+                        default=0.0,
+                    ) or 1.0
+                    chart_rows = []
+                    for row in contribution_df.sort_values(
                         "Logit contribution",
                         key=lambda values: values.abs(),
-                        ascending=True,
+                        ascending=False,
+                    ).itertuples(index=False):
+                        value = float(row[2])
+                        width = abs(value) / max_abs_contribution * 48.0
+                        is_positive = value >= 0
+                        bar_color = GREEN if is_positive else RED
+                        bar_style = (
+                            f"left:50%;width:{width:.2f}%;"
+                            if is_positive
+                            else f"right:50%;width:{width:.2f}%;"
+                        )
+                        chart_rows.append(
+                            f"""
+                            <div style="display:grid;grid-template-columns:minmax(115px,1fr) 2fr 92px;
+                                        align-items:center;gap:10px;margin:13px 0;">
+                                <div style="color:#C7D5E5;font-size:0.78rem;overflow-wrap:anywhere;">
+                                    {html.escape(str(row[0]))}
+                                </div>
+                                <div style="position:relative;height:22px;background:#142235;
+                                            border-radius:5px;overflow:hidden;">
+                                    <div style="position:absolute;left:50%;top:0;bottom:0;
+                                                width:1px;background:#71849B;"></div>
+                                    <div style="position:absolute;top:4px;bottom:4px;
+                                                {bar_style}background:{bar_color};border-radius:3px;"></div>
+                                </div>
+                                <div style="font-family:'Space Mono',monospace;color:{bar_color};
+                                            font-size:0.72rem;text-align:right;">
+                                    {value:+.6f}
+                                </div>
+                            </div>
+                            """
+                        )
+                    st.html(
+                        """
+                        <div style="display:flex;justify-content:space-between;
+                                    color:#8192A8;font-size:0.68rem;margin:0 100px 4px 0;">
+                            <span>← Toward Phishing</span><span>Toward Legitimate →</span>
+                        </div>
+                        """
+                        + "".join(chart_rows)
                     )
-                    fig = px.bar(
-                        chart_df,
-                        x="Logit contribution",
-                        y="Feature",
-                        color="Direction",
-                        orientation="h",
-                        color_discrete_map={
-                            "Toward Legitimate": GREEN,
-                            "Toward Phishing": RED,
-                        },
-                    )
-                    fig.update_layout(
-                        height=360,
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        font_color=WHITE,
-                        legend_title_text="Contribution direction",
-                        margin=dict(l=10, r=10, t=20, b=20),
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
 
                 with right:
                     st.markdown("#### Numerical breakdown")
@@ -1394,11 +1418,7 @@ elif page == "URL Investigation":
                     display_df["Logit contribution"] = display_df[
                         "Logit contribution"
                     ].map(lambda value: f"{value:+.6f}")
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    st.table(display_df)
                     st.metric("Model bias", f"{result.bias_contribution:+.6f}")
                     st.metric("Final model logit", f"{result.logit:+.6f}")
 

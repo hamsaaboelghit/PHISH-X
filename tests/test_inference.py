@@ -168,3 +168,20 @@ def test_security_assessment_has_no_flags_for_plain_example_url():
     assert result.security_assessment["status"] == "no_structural_flags"
     assert result.security_assessment["risk_level"] == "none"
     assert result.security_assessment["findings"] == []
+
+
+
+def test_security_assessment_flags_direct_ip_host_without_overriding_ml():
+    result = predict_url("http://192.168.1.10/account/verify", artifact())
+    assessment = result.security_assessment
+
+    assert result.prediction in {"Phishing", "Legitimate"}
+    assert assessment["status"] == "warning"
+    assert assessment["risk_level"] == "low"
+    assert assessment["actual_host"] == "192.168.1.10"
+    assert any(
+        finding["code"] == "ip_address_host"
+        and finding["severity"] == "low"
+        for finding in assessment["findings"]
+    )
+    assert result.as_dict()["security_assessment"] == assessment
