@@ -80,7 +80,20 @@ Show the Hessian-based Newton system, damping, backtracking line search, and Gau
 
 If the local model artifact is missing, run `python src/phishx/models/train.py` first. Do not spend presentation time debugging a fresh environment; generate and verify the artifact before the demo.
 
-## 3. Viva questions and concise answers
+## 3. New analysis labs
+
+### Threat Simulation Lab
+- Enter a baseline HTTP/HTTPS URL and run controlled, synthetic variations: scheme change, added subdomain label, appended account path, and query marker.
+- Compare the saved model's phishing/legitimate scores and five model-feature values for each variant.
+- All processing is local. The tool does not open URLs or perform network requests.
+- Describe this as a small controlled sensitivity experiment, not a complete adversarial-robustness benchmark and not proof that a changed URL is malicious.
+
+### Confidence & Uncertainty Lab
+- Inspect both class probabilities, the top-class score, distance from a selected decision threshold, and binary entropy.
+- Move the threshold slider to explore how the displayed class decision changes. This does not retrain or modify the saved model.
+- Call these score-based uncertainty indicators or a confidence proxy. Do not call them calibrated confidence or claim they estimate real-world certainty; no calibration procedure is currently implemented.
+
+## 4. Viva questions and concise answers
 
 **Q1. Why did you choose Logistic Regression?**  
 It is suitable for binary classification, produces probabilities through the sigmoid function, and has a transparent objective, gradient, and Hessian that make it appropriate for demonstrating numerical optimization.
@@ -136,7 +149,7 @@ No. It can be legitimate, especially in private networks. PHISH-X reports it as 
 **Q18. What are the main limitations?**  
 The dataset has collection biases and lexical shortcuts; only five lexical features feed the model; there is no live reputation, DNS, WHOIS, page-content, or browser analysis; and the evaluation is one fixed group-separated test split.
 
-## 4. Claims to avoid during the presentation
+## 5. Claims to avoid during the presentation
 
 - Do not say the system guarantees that a URL is safe.
 - Do not call the 98.08% result a real-world or future-campaign accuracy guarantee.
@@ -147,7 +160,7 @@ The dataset has collection biases and lexical shortcuts; only five lexical featu
 - Do not say URLs are visited or checked against live threat intelligence; all current analysis is local.
 - Do not present reserved example domains as live websites.
 
-## 5. Submission checklist
+## 6. Submission checklist
 
 - [ ] Confirm the latest `main` commit is pulled locally.
 - [ ] Confirm the approved dataset and split manifests exist.
