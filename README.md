@@ -208,6 +208,11 @@ docs/                         Detailed feature and security specification
 
 ## Further documentation
 
+- [Final Project Report](docs/FINAL_PROJECT_REPORT.md)
+- [Presentation, Live Demo & Viva Guide](docs/DEMO_AND_VIVA_GUIDE.md)
+- [Dataset & Evaluation Protocol](docs/DATASET_AND_EVALUATION_PROTOCOL.md)
 - [URL Security & Feature Specification](docs/URL_SECURITY_AND_FEATURE_SPECIFICATION.md)
+- [Artifact-backed Inference](docs/ARTIFACT_BACKED_INFERENCE.md)
+- [Test Execution Report](docs/TEST_EXECUTION_REPORT.md)
 - [Source code](src/phishx/)
 - [Automated tests](tests/)
