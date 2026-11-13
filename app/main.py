@@ -1134,100 +1134,211 @@ elif page == "Optimization Lab":
     page_header(
         "NUMERICAL COMPUTATIONS / OPTIMIZATION",
         "Numerical Optimization Lab",
-        "The mathematical workspace behind PHISH-X model training.",
+        "Run both hand-implemented optimizers on the same Group Train sample.",
     )
 
     st.markdown(
         """
         <div class="hero">
             <div class="hero-kicker">NUMERICAL METHODS ENGINE</div>
-            <div class="hero-title">Optimization is where mathematics meets intelligence.</div>
+            <div class="hero-title">Compare the mathematics, not just the predictions.</div>
             <div class="hero-text">
-                PHISH-X is designed to compare numerical approaches for
-                optimizing Logistic Regression parameters using a
-                Binary Cross-Entropy objective.
+                Both methods optimize the same Logistic Regression objective
+                using the same scaled training sample and L2 regularization.
             </div>
-            <span class="hero-tag">GRADIENT DESCENT</span>
-            <span class="hero-tag">NEWTON METHOD</span>
-            <span class="hero-tag">LOGISTIC REGRESSION</span>
+            <span class="hero-tag">BATCH GRADIENT DESCENT</span>
+            <span class="hero-tag">NEWTON-RAPHSON</span>
+            <span class="hero-tag">BINARY CROSS-ENTROPY</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("### Optimization methods")
-
-    col1, col2 = st.columns(2, gap="large")
-
-    with col1:
-        with st.container(border=True):
-            st.markdown("#### Gradient Descent")
-            st.latex(r"W_{new}=W-\alpha\nabla J(W)")
-            st.markdown(
-                """
-                **Core idea**
-
-                Iteratively update model parameters in the opposite
-                direction of the gradient.
-
-                **What we will measure**
-                - Convergence behavior
-                - Number of iterations
-                - Final objective value
-                - Runtime
-                """
-            )
-
-    with col2:
-        with st.container(border=True):
-            st.markdown("#### Newton's Method")
-            st.latex(r"W_{new}=W-H^{-1}\nabla J(W)")
-            st.markdown(
-                """
-                **Core idea**
-
-                Use first and second derivatives to estimate a
-                better parameter update.
-
-                **What we will measure**
-                - Convergence behavior
-                - Number of iterations
-                - Final objective value
-                - Computational cost
-                """
-            )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    with st.container(border=True):
-        st.markdown("### Objective function")
-
-        st.latex(
-            r"J(W)=-\frac{1}{m}\sum_{i=1}^{m}"
-            r"\left[y_i\log(p_i)+(1-y_i)\log(1-p_i)\right]"
+    st.markdown("### Experiment configuration")
+    cfg1, cfg2, cfg3 = st.columns(3)
+    with cfg1:
+        sample_per_class = st.select_slider(
+            "Samples per class",
+            options=[500, 1000, 2000, 5000],
+            value=2000,
+        )
+    with cfg2:
+        learning_rate = st.select_slider(
+            "Gradient Descent learning rate",
+            options=[0.01, 0.03, 0.05, 0.1],
+            value=0.05,
+        )
+    with cfg3:
+        max_iterations = st.select_slider(
+            "Maximum iterations",
+            options=[100, 250, 500, 1000],
+            value=500,
         )
 
-        st.markdown(
-            """
-            Where:
-
-            - \(m\): number of training examples
-            - \(y_i\): actual class label
-            - \(p_i\): predicted probability
-            - \(W\): model parameter vector
-
-            The optimization experiment will compare how each
-            numerical method minimizes this objective.
-            """
-        )
-
-    st.info(
-        "Optimization experiments are not connected yet. "
-        "No training results, convergence curves or performance comparisons are fabricated here."
+    st.caption(
+        "A deterministic, class-balanced sample is used for interactive runtime. "
+        "The production model is trained separately on the complete Group Train split."
     )
 
+    if st.button("Run numerical comparison", type="primary", use_container_width=True):
+        import sys
+        import time
 
-# ============================================================
+        import numpy as np
+
+        source_root = str(ROOT / "src")
+        if source_root not in sys.path:
+            sys.path.insert(0, source_root)
+
+        try:
+            from phishx.data.dataset import load_group_split
+            from phishx.data.preprocessing import NumericalStandardScaler
+            from phishx.models.logistic_regression import (
+                gradient_descent,
+                newton_method,
+            )
+
+            with st.spinner("Loading Group Train and running both numerical methods..."):
+                X_train, _, y_train, _ = load_group_split()
+                X_frame = X_train.copy()
+                y_series = y_train.copy()
+
+                class_frames = []
+                for label in (0, 1):
+                    class_frame = X_frame.loc[y_series == label].copy()
+                    class_frame["_target"] = y_series.loc[y_series == label].to_numpy()
+                    if class_frame.empty:
+                        raise ValueError(f"Training split does not contain class {label}.")
+                    class_frames.append(
+                        class_frame.sample(
+                            n=min(sample_per_class, len(class_frame)),
+                            random_state=42,
+                        )
+                    )
+
+                experiment = (
+                    pd.concat(class_frames, axis=0)
+                    .sample(frac=1.0, random_state=42)
+                    .reset_index(drop=True)
+                )
+                y_experiment = experiment.pop("_target").to_numpy(dtype=int)
+                X_experiment = experiment.to_numpy(dtype=float)
+
+                scaler = NumericalStandardScaler()
+                X_scaled = scaler.fit_transform(X_experiment)
+
+                gd_start = time.perf_counter()
+                _, _, gd_losses = gradient_descent(
+                    X_scaled,
+                    y_experiment,
+                    learning_rate=learning_rate,
+                    n_iterations=max_iterations,
+                    l2=1e-3,
+                )
+                gd_seconds = time.perf_counter() - gd_start
+
+                newton_start = time.perf_counter()
+                _, _, nr_losses = newton_method(
+                    X_scaled,
+                    y_experiment,
+                    n_iterations=min(max_iterations, 100),
+                    l2=1e-3,
+                    damping=1e-8,
+                    tolerance=1e-7,
+                )
+                newton_seconds = time.perf_counter() - newton_start
+
+            st.session_state["phishx_optimization_result"] = {
+                "gd_losses": [float(v) for v in gd_losses],
+                "nr_losses": [float(v) for v in nr_losses],
+                "gd_iterations": len(gd_losses) - 1,
+                "nr_iterations": len(nr_losses) - 1,
+                "gd_seconds": gd_seconds,
+                "nr_seconds": newton_seconds,
+                "gd_final_loss": float(gd_losses[-1]),
+                "nr_final_loss": float(nr_losses[-1]),
+                "samples": int(len(y_experiment)),
+                "sample_per_class": int(sample_per_class),
+                "learning_rate": float(learning_rate),
+            }
+            st.success("Both numerical experiments completed.")
+        except Exception as exc:
+            st.error(f"Optimization experiment failed: {exc}")
+
+    result = st.session_state.get("phishx_optimization_result")
+    if result:
+        st.markdown("### Measured results")
+        st.caption(
+            f"Same balanced sample: {result['samples']:,} records | "
+            f"L2 = 0.001 | GD learning rate = {result['learning_rate']}"
+        )
+
+        metric_cols = st.columns(4)
+        metric_cols[0].metric("GD final loss", f"{result['gd_final_loss']:.6f}")
+        metric_cols[1].metric("Newton final loss", f"{result['nr_final_loss']:.6f}")
+        metric_cols[2].metric("GD iterations", result["gd_iterations"])
+        metric_cols[3].metric("Newton iterations", result["nr_iterations"])
+
+        metric_cols = st.columns(2)
+        metric_cols[0].metric("GD runtime", f"{result['gd_seconds']:.3f} s")
+        metric_cols[1].metric("Newton runtime", f"{result['nr_seconds']:.3f} s")
+
+        convergence = pd.DataFrame(
+            {
+                "Iteration": list(range(len(result["gd_losses"])))
+                + list(range(len(result["nr_losses"]))),
+                "Loss": result["gd_losses"] + result["nr_losses"],
+                "Method": (
+                    ["Gradient Descent"] * len(result["gd_losses"])
+                    + ["Newton-Raphson"] * len(result["nr_losses"])
+                ),
+            }
+        )
+        st.markdown("### Convergence curves")
+        st.line_chart(
+            convergence.pivot(
+                index="Iteration",
+                columns="Method",
+                values="Loss",
+            )
+        )
+
+        comparison = pd.DataFrame(
+            [
+                {
+                    "Method": "Batch Gradient Descent",
+                    "Iterations": result["gd_iterations"],
+                    "Final BCE + L2": result["gd_final_loss"],
+                    "Runtime (seconds)": result["gd_seconds"],
+                },
+                {
+                    "Method": "Newton-Raphson",
+                    "Iterations": result["nr_iterations"],
+                    "Final BCE + L2": result["nr_final_loss"],
+                    "Runtime (seconds)": result["nr_seconds"],
+                },
+            ]
+        )
+        st.dataframe(comparison, use_container_width=True, hide_index=True)
+
+    with st.container(border=True):
+        st.markdown("### Numerical objective and update equations")
+        st.latex(
+            r"J(w,b)=-\frac{1}{m}\sum_{i=1}^{m}"
+            r"[y_i\log(p_i)+(1-y_i)\log(1-p_i)]"
+            r"+\frac{\lambda}{2m}\|w\|_2^2"
+        )
+        st.markdown("**Gradient Descent**")
+        st.latex(r"w_{k+1}=w_k-\alpha\nabla J(w_k)")
+        st.markdown("**Newton-Raphson**")
+        st.latex(r"\theta_{k+1}=\theta_k-H(\theta_k)^{-1}\nabla J(\theta_k)")
+        st.caption(
+            "The inverse-Hessian update is implemented through the project's "
+            "manual linear solver (Gaussian Elimination with Partial Pivoting), "
+            "not a library optimizer."
+        )
+
+
 # PAGE 4 — URL INVESTIGATION
 # ============================================================
 
