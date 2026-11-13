@@ -40,6 +40,7 @@ __all__ = [
     "UrlParseError",
     "default_port_for",
     "legacy_split",
+    "normalize_url_text",
     "parse_ipv4_whatwg",
     "parse_url",
 ]
@@ -78,6 +79,15 @@ _HOST_PORT_RE = re.compile(r"^[^/?#:@]+:[0-9]+(?:[/?#]|$)")
 
 #: ``scheme:`` for non-hierarchical schemes (mailto:, javascript:, data:).
 _OPAQUE_SCHEME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9+.\-]*):")
+
+# Known non-hierarchical schemes must not be mistaken for host:port.
+_KNOWN_OPAQUE_SCHEMES = frozenset({
+    "javascript", "vbscript", "jscript", "livescript", "mocha",
+    "data", "blob", "about", "chrome", "view-source", "feed",
+    "mailto", "mid", "cid", "news", "nntp",
+    "tel", "sms", "smsto", "callto", "skype", "facetime",
+    "bitcoin", "ethereum", "magnet", "urn", "intent", "market",
+})
 
 _DEFAULT_PORTS = {"http": 80, "https": 443, "ftp": 21, "ws": 80, "wss": 443}
 
@@ -330,6 +340,14 @@ def _to_ascii(host: str) -> str | None:
         return None
 
 
+def normalize_url_text(url: str) -> str:
+    """Normalize text consistently for parser and raw-text security checks."""
+    text = url.strip()
+    for ch in _DELETED_CHARS:
+        text = text.replace(ch, "")
+    return text
+
+
 def parse_url(url: str) -> ParsedURL:
     """Parse ``url`` into a :class:`ParsedURL` (never touches the network).
 
@@ -339,9 +357,7 @@ def parse_url(url: str) -> ParsedURL:
     """
     if not isinstance(url, str):
         raise UrlParseError("url must be a string")
-    text = url.strip()
-    for ch in _DELETED_CHARS:
-        text = text.replace(ch, "")
+    text = normalize_url_text(url)
     if not text:
         raise UrlParseError("url is empty")
 
@@ -369,7 +385,10 @@ def parse_url(url: str) -> ParsedURL:
         authority_source = "explicit"
     else:
         m = _OPAQUE_SCHEME_RE.match(text)
-        if m and not _HOST_PORT_RE.match(text):
+        if m and (
+            m.group(1).lower() in _KNOWN_OPAQUE_SCHEMES
+            or not _HOST_PORT_RE.match(text)
+        ):
             scheme = m.group(1).lower()
             has_explicit_scheme = True
             is_opaque = True

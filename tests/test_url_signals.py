@@ -18,6 +18,21 @@ def test_nondefault_port():
     assert not analyze("http://a.com/").has_nondefault_port
 
 
+def test_invalid_port_is_reported_separately_from_default_port():
+    invalid = analyze("http://a.com:99999/")
+    assert invalid.parsed and not invalid.port_valid
+    assert invalid.has_invalid_port and invalid.port is None
+    assert not invalid.has_nondefault_port
+    assert not analyze("http://a.com:80/").has_invalid_port
+    assert not analyze("http://a.com/").has_invalid_port
+
+
+def test_raw_text_security_checks_use_parser_normalization():
+    assert analyze("http://ht\ttp://evil.example/").double_scheme
+    assert analyze("http://http://evil.example/").double_scheme
+    assert not analyze("http://a.com/").double_scheme
+
+
 def test_punycode_and_unicode_host():
     assert analyze("http://xn--pple-43d.com").has_punycode_label
     s = analyze("http://bücher.example/")

@@ -20,7 +20,9 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass
 
-from .url_parser import ParsedURL, UrlParseError, default_port_for, parse_url
+from .url_parser import (
+    ParsedURL, UrlParseError, default_port_for, normalize_url_text, parse_url,
+)
 
 __all__ = ["UrlSecuritySignals", "analyze_url_security"]
 
@@ -46,6 +48,7 @@ class UrlSecuritySignals:
     userinfo_contains_dot: bool = False  # e.g. paypal.com@evil.example
     port: int | None = None
     port_valid: bool = True
+    has_invalid_port: bool = False
     has_nondefault_port: bool = False
     has_punycode_label: bool = False  # label starting with "xn--"
     has_non_ascii_host: bool = False
@@ -74,7 +77,7 @@ def analyze_url_security(url: object) -> UrlSecuritySignals:
     except UrlParseError as exc:
         return _failed(str(exc))
 
-    text = url.strip()
+    text = normalize_url_text(url)
     labels = p.labels
     non_ascii = not p.host.isascii()
     default_port = default_port_for(p.scheme)
@@ -93,6 +96,7 @@ def analyze_url_security(url: object) -> UrlSecuritySignals:
         userinfo_contains_dot="." in p.userinfo,
         port=p.port,
         port_valid=p.port_valid,
+        has_invalid_port=not p.port_valid,
         has_nondefault_port=(
             p.port is not None
             and default_port is not None
