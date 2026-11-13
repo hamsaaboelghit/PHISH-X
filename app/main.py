@@ -781,7 +781,7 @@ if page == "Overview":
                 showlegend=False,
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     with right:
         with st.container(border=True):
@@ -888,7 +888,7 @@ elif page == "Dataset Intelligence":
         fig = style_chart(fig, 350)
         fig.update_layout(showlegend=False)
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         st.markdown(
             """
@@ -965,7 +965,7 @@ elif page == "Dataset Intelligence":
             )
 
             fig = style_chart(fig, 430)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             stats = plot_df.groupby("Class")[selected_feature].agg(
                 ["count", "mean", "median", "std", "min", "max"]
@@ -973,7 +973,7 @@ elif page == "Dataset Intelligence":
 
             st.dataframe(
                 stats.style.format("{:.3f}"),
-                use_container_width=True,
+                width="stretch",
             )
 
         else:
@@ -1029,7 +1029,7 @@ elif page == "Dataset Intelligence":
             fig = style_chart(fig, 480)
             fig.update_layout(coloraxis_showscale=False)
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             class_tld = (
                 tld_df[tld_df["ClassLabel"].isin([0, 1])]
@@ -1059,7 +1059,7 @@ elif page == "Dataset Intelligence":
             )
 
             fig = style_chart(fig, 400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
             st.caption(
                 "Note: This is a simplified final-label extraction, not a full Public Suffix List parser."
@@ -1095,7 +1095,7 @@ elif page == "Dataset Intelligence":
             if len(missing):
                 missing_df = missing.rename("Missing").reset_index()
                 missing_df.columns = ["Column", "Missing"]
-                st.dataframe(missing_df, use_container_width=True)
+                st.dataframe(missing_df, width="stretch")
             else:
                 st.success("No missing values detected.")
 
@@ -1108,7 +1108,7 @@ elif page == "Dataset Intelligence":
                 "Missing": df.isna().sum().values,
             })
 
-            st.dataframe(schema_df, use_container_width=True, height=300)
+            st.dataframe(schema_df, width="stretch", height=300)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1119,7 +1119,7 @@ elif page == "Dataset Intelligence":
                 st.markdown("**Duplicate URL samples**")
                 st.dataframe(
                     duplicate_rows[["URL", "ClassLabel"]].head(20),
-                    use_container_width=True,
+                    width="stretch",
                 )
 
         st.warning(
@@ -1212,7 +1212,7 @@ elif page == "Model Evaluation":
                     index=["Actual Phishing", "Actual Legitimate"],
                     columns=["Predicted Phishing", "Predicted Legitimate"],
                 )
-                st.dataframe(confusion_frame, use_container_width=True)
+                st.dataframe(confusion_frame, width="stretch")
                 st.caption(
                     "True Negative = correctly detected Phishing; "
                     "True Positive = correctly identified Legitimate."
@@ -1286,7 +1286,7 @@ elif page == "Optimization Lab":
         "The production model is trained separately on the complete Group Train split."
     )
 
-    if st.button("Run numerical comparison", type="primary", use_container_width=True):
+    if st.button("Run numerical comparison", type="primary", width="stretch"):
         import sys
         import time
 
@@ -1425,7 +1425,7 @@ elif page == "Optimization Lab":
                 },
             ]
         )
-        st.dataframe(comparison, use_container_width=True, hide_index=True)
+        st.dataframe(comparison, width="stretch", hide_index=True)
 
     with st.container(border=True):
         st.markdown("### Numerical objective and update equations")
@@ -1481,7 +1481,7 @@ elif page == "URL Investigation":
         )
         analyze = st.button(
             "◈  ANALYZE URL",
-            use_container_width=True,
+            width="stretch",
             type="primary",
         )
 
@@ -1709,7 +1709,7 @@ elif page == "URL Investigation":
                         )
                         st.dataframe(
                             signals_df,
-                            use_container_width=True,
+                            width="stretch",
                             hide_index=True,
                         )
                     else:
