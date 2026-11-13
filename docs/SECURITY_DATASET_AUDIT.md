@@ -1,3 +1,5 @@
+> **Historical audit snapshot:** this document preserves the security-dataset findings recorded during the earlier task handoff. Its opening branch/commit status and references to production integration being pending describe that historical point in time, not the current repository state. The production extractor, inference pipeline, and analyst workbench have since been integrated. For current implementation and evaluation status, see [Final Project Report](FINAL_PROJECT_REPORT.md), [URL Security & Feature Specification](URL_SECURITY_AND_FEATURE_SPECIFICATION.md), and [Dataset & Evaluation Protocol](DATASET_AND_EVALUATION_PROTOCOL.md).
+
 # Security Dataset Audit — Shawky
 
 ## Scope and status
