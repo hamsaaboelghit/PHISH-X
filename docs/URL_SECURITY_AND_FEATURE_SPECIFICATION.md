@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Spec version** | `1.0-legacy` (`FEATURE_SPEC_VERSION` in code) |
-| **Owner** | Eiad — Security Lead & URL Feature Engineering |
+| **Owner** | Eyad — Security Lead & URL Feature Engineering |
 | **Status** | **IMPLEMENTED — aligned with the requirements supplied for this task** |
 | **Code** | `src/phishx/features/url_parser.py`, `url_features.py`, `url_signals.py` |
 | **Tests** | `tests/` (current team-reported suite: 319 passed, 1 skipped, 190 subtests; includes full-dataset parity) |
