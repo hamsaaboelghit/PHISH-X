@@ -296,6 +296,7 @@ The layer reports a severity label and actual parsed destination host when avail
 4. The legacy feature definitions are preserved for dataset compatibility. Some names are imperfect proxies for their apparent meaning; the feature specification documents these quirks.
 5. Structural rules can produce false positives and false negatives. A direct IP can be legitimate, HTTPS does not prove legitimacy, and the absence of a finding does not prove safety.
 6. The system is an analyst aid, not an autonomous blocking authority. High-impact decisions require independent investigation.
+7. A separate historical TLD-popularity ablation artifact was generated with scikit-learn Logistic Regression on a 16-feature matrix. It is an audit comparison only, not the deployed five-feature model, not the MATH301 hand-implemented training path, and not the source of the metrics reported in this document.
 
 ## 11. Testing and verification
 
