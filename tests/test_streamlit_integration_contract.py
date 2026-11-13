@@ -126,7 +126,7 @@ def test_model_evaluation_page_displays_class_specific_metrics() -> None:
         "phishing",
         "legitimate",
         "confusion_matrix",
-        "Group Split by Host",
+        "dataset_split",
         "Phishing Recall",
         "Legitimate Precision",
     ):
