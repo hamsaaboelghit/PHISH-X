@@ -4,7 +4,7 @@ The PHISH-X project is developed by the following six-member team.
 
 | Team member | Responsibility |
 |---|---|
-| Hamsa Aboelghit | Project Lead / Architecture & Integration |
+| Hamsa Aboelghit | AI / Team Lead |
 | Noruhan Ali | AI |
 | Eyad Mohamed | Security |
 | Roaa Elgarf | AI |
