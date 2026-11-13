@@ -212,6 +212,8 @@ docs/                         Detailed feature and security specification
 - [Final Project Report](docs/FINAL_PROJECT_REPORT.md)
 - [Presentation, Live Demo & Viva Guide](docs/DEMO_AND_VIVA_GUIDE.md)
 - [Dataset & Evaluation Protocol](docs/DATASET_AND_EVALUATION_PROTOCOL.md)
+- [Dataset Audit Summary](dataset_audit.md)
+- [Detailed Security Dataset Audit](docs/SECURITY_DATASET_AUDIT.md)
 - [URL Security & Feature Specification](docs/URL_SECURITY_AND_FEATURE_SPECIFICATION.md)
 - [Artifact-backed Inference](docs/ARTIFACT_BACKED_INFERENCE.md)
 - [Test Execution Report](docs/TEST_EXECUTION_REPORT.md)
