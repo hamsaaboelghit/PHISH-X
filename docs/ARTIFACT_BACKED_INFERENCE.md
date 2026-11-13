@@ -28,11 +28,15 @@ the minimum supported keys:
 
 Optional metadata:
 
-- `threshold`: defaults to 0.5 and must be strictly between zero and one
+- `threshold`: defaults to 0.5 and must be between zero and one, inclusive
 - `feature_columns`: defaults to the five-feature contract above and, when
   present, must match it exactly
 - `label_mapping`: defaults to `{0: "Phishing", 1: "Legitimate"}`
 - `feature_spec_version`: defaults to `1.0-legacy`
+
+The decision rule is `Legitimate` when the model's positive-class probability
+is greater than or equal to the threshold; otherwise it is `Phishing`.
+The positive class is label 1 (`Legitimate`).
 
 Joblib uses pickle internally. Never load an artifact from an untrusted source.
 
