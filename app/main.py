@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import os
 from urllib.parse import urlsplit
 from collections import Counter
 import html
@@ -20,6 +21,19 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = ROOT / "data" / "raw" / "url_features_extracted1.csv"
 
+DEFAULT_MODEL_ARTIFACT = (
+    ROOT / "data" / "processed" / "model_artifacts" / "phishx_newton_model.joblib"
+)
+_configured_artifact = Path(
+    os.environ.get("PHISHX_MODEL_ARTIFACT", str(DEFAULT_MODEL_ARTIFACT))
+).expanduser()
+MODEL_ARTIFACT_PATH = (
+    _configured_artifact
+    if _configured_artifact.is_absolute()
+    else ROOT / _configured_artifact
+)
+
+
 st.set_page_config(
     page_title="PHISH-X | Threat Intelligence",
     page_icon="🛡️",
@@ -27,6 +41,19 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+@st.cache_resource(show_spinner=False)
+def load_phishx_model(artifact_path: str):
+    """Load the trusted local PHISH-X model artifact once per app process."""
+    import sys
+
+    source_root = str(ROOT / "src")
+    if source_root not in sys.path:
+        sys.path.insert(0, source_root)
+
+    from phishx.inference import load_model_artifact
+
+    return load_model_artifact(artifact_path)
 
 # ============================================================
 # DESIGN SYSTEM
@@ -83,6 +110,14 @@ st.markdown(
         padding-top: 2rem;
         padding-bottom: 3rem;
         max-width: 1600px;
+    }
+
+    /* Hide Streamlit auto-discovered navigation; PHISH-X has its own WORKSPACE radio. */
+    [data-testid="stSidebarNav"],
+    [data-testid="stAppNav"],
+    [data-testid="stAppNavContainer"],
+    [data-testid="stPageLink-NavLink"] {
+        display: none !important;
     }
 
     [data-testid="stSidebar"] {
@@ -1199,20 +1234,20 @@ elif page == "Optimization Lab":
 elif page == "URL Investigation":
 
     page_header(
-        "SECURITY OPERATIONS / URL ANALYSIS",
+        "SECURITY OPERATIONS / AI-POWERED URL ANALYSIS",
         "URL Investigation",
-        "Inspect URL structure and extract preliminary security-relevant signals.",
+        "Run the trained Newton Logistic Regression model and inspect its explainable security assessment.",
     )
 
     st.markdown(
         """
         <div class="hero">
-            <div class="hero-kicker">ANALYST WORKSPACE / MANUAL INSPECTION</div>
+            <div class="hero-kicker">ANALYST WORKSPACE / ARTIFACT-BACKED INFERENCE</div>
             <div class="hero-title">Investigate a suspicious URL.</div>
             <div class="hero-text">
-                Enter a URL to inspect its structure and extract
-                preliminary characteristics. The URL is parsed locally;
-                this tool does not visit or open the destination.
+                PHISH-X extracts the model's five trained features, runs the
+                validated Newton Logistic Regression artifact, and explains
+                the result. Analysis is local; the destination is never opened.
             </div>
         </div>
         """,
@@ -1220,84 +1255,243 @@ elif page == "URL Investigation":
     )
 
     with st.container(border=True):
-
         st.markdown("#### Target URL")
-
         url_input = st.text_input(
             "URL",
             placeholder="https://example.com/login",
             label_visibility="collapsed",
+            key="phishx_url_input",
         )
-
         analyze = st.button(
             "◈  ANALYZE URL",
             use_container_width=True,
+            type="primary",
         )
 
     if analyze:
-
         if not url_input.strip():
             st.warning("Enter a URL first.")
-
+        elif not MODEL_ARTIFACT_PATH.is_file():
+            st.error("The trained PHISH-X model artifact was not found.")
+            st.code(str(MODEL_ARTIFACT_PATH), language="text")
+            st.markdown(
+                "Place the trusted `phishx_newton_model.joblib` file at the "
+                "path above, or set the `PHISHX_MODEL_ARTIFACT` environment "
+                "variable to its location. The artifact is intentionally not "
+                "committed to GitHub."
+            )
         else:
-            signals = extract_basic_signals(url_input)
+            try:
+                with st.spinner("Loading the trained model and analyzing the URL..."):
+                    artifact = load_phishx_model(str(MODEL_ARTIFACT_PATH))
+                    from phishx.inference import predict_url
 
-            if not signals:
-                st.error("Could not parse this URL.")
+                    result = predict_url(url_input, artifact)
+            except FileNotFoundError:
+                st.error("The model artifact disappeared or could not be found. Check its configured path.")
+            except (ValueError, TypeError) as exc:
+                st.error(f"PHISH-X could not analyze this URL: {exc}")
+            except Exception:
+                st.error(
+                    "PHISH-X encountered an unexpected inference error. "
+                    "Check the application logs and verify the model artifact and dependencies."
+                )
             else:
                 st.markdown("<br>", unsafe_allow_html=True)
-
                 st.markdown(
                     f"""
                     <div class="url-result">
                         <div class="url-result-title">TARGET UNDER INVESTIGATION</div>
-                        <div class="url-result-value">{html.escape(url_input)}</div>
+                        <div class="url-result-value">{html.escape(result.url)}</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                section_title("EXTRACTED URL SIGNALS")
+                section_title("MODEL PREDICTION")
 
-                cols = st.columns(3)
+                if result.prediction == "Phishing":
+                    st.error("PHISHING DETECTED — treat this URL as suspicious.")
+                else:
+                    st.success("MODEL CLASSIFICATION: LEGITIMATE")
 
-                for i, (name, value) in enumerate(signals.items()):
-                    with cols[i % 3]:
-                        st.metric(name, f"{value:,}")
-
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                with st.container(border=True):
-                    st.markdown("#### Signal details")
-
-                    signal_df = pd.DataFrame(
-                        list(signals.items()),
-                        columns=["Feature", "Extracted value"],
+                probability_cols = st.columns(2)
+                with probability_cols[0]:
+                    st.metric(
+                        "Phishing probability",
+                        f"{result.phishing_probability:.2%}",
+                    )
+                with probability_cols[1]:
+                    st.metric(
+                        "Legitimate probability",
+                        f"{result.legitimate_probability:.2%}",
                     )
 
+                st.caption(
+                    f"Decision threshold: {result.threshold:.2%}. "
+                    "Probabilities are model estimates, not proof that a destination is safe."
+                )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                section_title("EXPLAINABLE MODEL FEATURES")
+
+                contribution_rows = []
+                for feature_name, raw_value in result.model_features.items():
+                    contribution = result.contributions[feature_name]
+                    contribution_rows.append(
+                        {
+                            "Feature": feature_name,
+                            "Extracted value": raw_value,
+                            "Logit contribution": contribution,
+                            "Direction": (
+                                "Toward Legitimate"
+                                if contribution >= 0
+                                else "Toward Phishing"
+                            ),
+                        }
+                    )
+
+                contribution_df = pd.DataFrame(contribution_rows)
+                left, right = st.columns([1.15, 1])
+
+                with left:
+                    st.markdown("#### Feature contribution to model logit")
+                    chart_df = contribution_df.sort_values(
+                        "Logit contribution",
+                        key=lambda values: values.abs(),
+                        ascending=True,
+                    )
+                    fig = px.bar(
+                        chart_df,
+                        x="Logit contribution",
+                        y="Feature",
+                        color="Direction",
+                        orientation="h",
+                        color_discrete_map={
+                            "Toward Legitimate": GREEN,
+                            "Toward Phishing": RED,
+                        },
+                    )
+                    fig.update_layout(
+                        height=360,
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font_color=WHITE,
+                        legend_title_text="Contribution direction",
+                        margin=dict(l=10, r=10, t=20, b=20),
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                with right:
+                    st.markdown("#### Numerical breakdown")
+                    display_df = contribution_df[
+                        ["Feature", "Extracted value", "Logit contribution"]
+                    ].copy()
+                    display_df["Extracted value"] = display_df["Extracted value"].map(
+                        lambda value: f"{value:.6g}"
+                    )
+                    display_df["Logit contribution"] = display_df[
+                        "Logit contribution"
+                    ].map(lambda value: f"{value:+.6f}")
                     st.dataframe(
-                        signal_df,
+                        display_df,
                         use_container_width=True,
                         hide_index=True,
                     )
+                    st.metric("Model bias", f"{result.bias_contribution:+.6f}")
+                    st.metric("Final model logit", f"{result.logit:+.6f}")
 
-                st.info(
-                    "These are preliminary structural signals only. "
-                    "They are not a phishing classification or a trained-model prediction."
+                st.caption(
+                    "Positive contributions move the logit toward Legitimate (class 1); "
+                    "negative contributions move it toward Phishing (class 0). "
+                    "These are additive log-odds contributions, not causal explanations."
                 )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                section_title("INDEPENDENT SECURITY ASSESSMENT")
+
+                assessment = result.security_assessment
+                assessment_cols = st.columns(2)
+                with assessment_cols[0]:
+                    st.metric(
+                        "Structural assessment",
+                        assessment.get("status", "unavailable").replace("_", " ").title(),
+                    )
+                with assessment_cols[1]:
+                    st.metric(
+                        "Rule-based severity",
+                        assessment.get("risk_level", "none").upper(),
+                    )
+
+                actual_host = assessment.get("actual_host")
+                if actual_host:
+                    st.write(f"**Actual destination host:** `{actual_host}`")
+
+                findings = assessment.get("findings", [])
+                if findings:
+                    for finding in findings:
+                        severity = finding.get("severity", "medium").lower()
+                        message = (
+                            f"**{finding.get('title', 'Security finding')}** — "
+                            f"{finding.get('description', '')}"
+                        )
+                        if severity == "high":
+                            st.error(message)
+                        else:
+                            st.warning(message)
+                else:
+                    st.success("No structural red flags were detected by the current rule set.")
+
+                st.caption(
+                    assessment.get(
+                        "note",
+                        "Structural checks are advisory and do not guarantee safety.",
+                    )
+                )
+                st.info(
+                    "The security assessment is deliberately separate from the AI model. "
+                    "It does not rewrite the prediction or either probability."
+                )
+
+                if result.extraction_warnings:
+                    with st.expander("Feature extraction warnings"):
+                        for warning in result.extraction_warnings:
+                            st.warning(warning)
+
+                with st.expander("Technical URL security signals"):
+                    visible_signals = {
+                        name: value
+                        for name, value in result.security_signals.items()
+                        if value not in (False, None, 0, "", [], {})
+                    }
+                    if visible_signals:
+                        signals_df = pd.DataFrame(
+                            list(visible_signals.items()),
+                            columns=["Signal", "Value"],
+                        )
+                        st.dataframe(
+                            signals_df,
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    else:
+                        st.caption("No non-default parser signals were returned.")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    with st.expander("How URL analysis works"):
+    with st.expander("How PHISH-X analyzes a URL"):
         st.markdown(
             """
-            1. Normalize the input enough to parse its URL structure.
-            2. Extract the hostname, path and query string.
-            3. Calculate basic numerical URL characteristics.
-            4. Display the extracted signals for analyst inspection.
+            1. Validate and load the trusted Newton Logistic Regression artifact.
+            2. Reuse the project's canonical URL feature extractor.
+            3. Select the exact five model features and apply the fitted scaler.
+            4. Calculate the phishing and legitimate probabilities.
+            5. Explain the model logit using additive feature contributions.
+            6. Run independent structural security rules without changing the ML result.
 
-            No external URL is opened or contacted.
+            The URL is parsed locally. PHISH-X does not visit the URL, perform DNS
+            lookups, or contact the destination website.
             """
         )
 
