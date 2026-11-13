@@ -5,6 +5,7 @@ import pytest
 from phishx.features.url_parser import (
     UrlParseError,
     legacy_split,
+    normalize_url_text,
     parse_ipv4_whatwg,
     parse_url,
 )
@@ -207,3 +208,33 @@ def test_opaque_scheme_query_and_fragment_are_split():
     assert p.is_opaque_scheme
     assert p.path == "alert(1)" and p.query == "x=2"
     assert p.fragment == "frag" and p.has_fragment
+
+
+@pytest.mark.parametrize("url", ["javascript:123", "data:123"])
+def test_numeric_known_opaque_schemes_are_not_host_ports(url):
+    parsed = parse_url(url)
+    assert parsed.is_opaque_scheme
+    assert parsed.authority_source == "none"
+    assert parsed.host == "" and parsed.port is None
+    assert parsed.path == "123"
+
+
+def test_known_opaque_scheme_is_case_insensitive():
+    assert parse_url("JAVASCRIPT:123").is_opaque_scheme
+
+
+@pytest.mark.parametrize("url,host,port", [
+    ("example.com:8080", "example.com", 8080),
+    ("localhost:8080", "localhost", 8080),
+])
+def test_schemeless_host_port_is_preserved(url, host, port):
+    parsed = parse_url(url)
+    assert not parsed.is_opaque_scheme
+    assert parsed.authority_source == "implied"
+    assert parsed.host == host and parsed.port == port
+
+
+def test_parser_normalization_helper_matches_strict_parser():
+    raw = "  http://exa\\nmple.com/\\tlogin  "
+    assert normalize_url_text(raw) == "http://example.com/login"
+    assert parse_url(raw).host == "example.com"
