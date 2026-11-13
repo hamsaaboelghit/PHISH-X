@@ -26,4 +26,4 @@ jobs:
       - name: Run test suite
         run: python -m pytest tests -q
       - name: Compile Python files
-        run: python -m compileall -q src tests
+        run: python -m compileall -q app src tests
