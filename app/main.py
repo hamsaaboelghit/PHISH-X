@@ -1754,7 +1754,7 @@ st.markdown(
 )
 
 team_members = [
-    ("Hamsa Aboelghit", "PROJECT LEAD / ARCHITECTURE & INTEGRATION"),
+    ("Hamsa Aboelghit", "AI / TEAM LEAD"),
     ("Noruhan Ali", "AI"),
     ("Eyad Mohamed", "SECURITY"),
     ("Roaa Elgarf", "AI"),
