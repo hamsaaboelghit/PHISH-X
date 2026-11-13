@@ -1397,15 +1397,14 @@ elif page == "URL Investigation":
                             </div>
                             """
                         )
-                    st.markdown(
+                    st.html(
                         """
                         <div style="display:flex;justify-content:space-between;
                                     color:#8192A8;font-size:0.68rem;margin:0 100px 4px 0;">
                             <span>← Toward Phishing</span><span>Toward Legitimate →</span>
                         </div>
                         """
-                        + "".join(chart_rows),
-                        unsafe_allow_html=True,
+                        + "".join(chart_rows)
                     )
 
                 with right:
@@ -1419,11 +1418,7 @@ elif page == "URL Investigation":
                     display_df["Logit contribution"] = display_df[
                         "Logit contribution"
                     ].map(lambda value: f"{value:+.6f}")
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    st.table(display_df)
                     st.metric("Model bias", f"{result.bias_contribution:+.6f}")
                     st.metric("Final model logit", f"{result.logit:+.6f}")
 
