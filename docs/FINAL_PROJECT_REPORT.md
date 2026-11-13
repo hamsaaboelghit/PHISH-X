@@ -347,7 +347,7 @@ For a fresh clone, ensure the approved dataset and split CSVs are present at the
 
 | Team member | Responsibility |
 |---|---|
-| Hamsa Aboelghit | Project Lead / Architecture & Integration |
+| Hamsa Aboelghit | AI / Team Lead |
 | Noruhan Ali | AI |
 | Eyad Mohamed | Security |
 | Roaa Elgarf | AI |
