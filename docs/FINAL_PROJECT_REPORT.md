@@ -105,91 +105,91 @@ The extractor calculates a broader set of legacy URL features, but the remaining
 
 For feature column (j), using (n) training samples:
 
-[
+$
 mu_j = \frac{1}{n}\sum_{i=1}^{n}x_{ij}
-]
+$
 
-[
+$
 \sigma_j^2 = \frac{1}{n}\sum_{i=1}^{n}(x_{ij}-\mu_j)^2
 \qquad
 s_j=\sqrt{\sigma_j^2}
-]
+$
 
-[
+$
 z_{ij}=\frac{x_{ij}-\mu_j}{s_j}
-]
+$
 
 The implementation uses population variance. If a feature is constant, its scale is set to 1 to avoid division by zero. The fitted means and scales are stored in the model artifact and reused for test-time inference.
 
 ### 5.2 Logistic Regression
 
-For a feature vector (x\), weights (w\), and bias (b\):
+For a feature vector (x), weights (w), and bias (b):
 
-[
+$
 z=w^Tx+b
-]
+$
 
-[
+$
 p=\sigma(z)=\frac{1}{1+e^{-z}}
-]
+$
 
 The sigmoid implementation uses separate positive/negative branches for numerical stability.
 
 ### 5.3 Binary Cross-Entropy with L2 regularization
 
-For (m\) training examples:
+For (m) training examples:
 
-[
+$
 J(w,b)=-\frac{1}{m}\sum_{i=1}^{m}
 \left[y_i\log(p_i)+(1-y_i)\log(1-p_i)\right]
 +\frac{\lambda}{2m}\sum_{j=1}^{d}w_j^2
-]
+$
 
 The bias is not regularized. Probabilities are clipped only for safe logarithm evaluation.
 
 ### 5.4 Analytical gradient and Batch Gradient Descent
 
-Let (X\) be the standardized design matrix and (p\) the vector of predicted probabilities:
+Let (X) be the standardized design matrix and (p) the vector of predicted probabilities:
 
-[
+$
 \nabla_w J=\frac{X^T(p-y)}{m}+\frac{\lambda}{m}w
-]
+$
 
-[
+$
 \frac{\partial J}{\partial b}=\frac{1}{m}\sum_{i=1}^{m}(p_i-y_i)
-]
+$
 
 The batch updates are:
 
-[
+$
 w_{t+1}=w_t-\alpha\nabla_wJ
 \qquad
 b_{t+1}=b_t-\alpha\frac{\partial J}{\partial b}
-]
+$
 
 The learning rate, iteration limit, and stopping tolerances are explicit parameters. The Optimization Lab measures the loss history rather than presenting a hard-coded comparison.
 
 ### 5.5 Hessian and Newton-Raphson
 
-For augmented feature matrix (\tilde X\), including a bias column, and diagonal matrix (R\) with entries (p_i(1-p_i)\), the Hessian has the form:
+For augmented feature matrix (\tilde X), including a bias column, and diagonal matrix (R) with entries (p_i(1-p_i)), the Hessian has the form:
 
-[
+$
 H=\frac{1}{m}\tilde X^TR\tilde X+\frac{\lambda}{m}P
-]
+$
 
-where (P\) applies L2 regularization to feature weights but not the bias.
+where (P) applies L2 regularization to feature weights but not the bias.
 
-At each iteration the damped Newton direction (d\) is obtained from:
+At each iteration the damped Newton direction (d) is obtained from:
 
-[
+$
 (H+\eta I)d=\nabla J
-]
+$
 
 and the parameters are updated by:
 
-[
+$
 \theta_{t+1}=\theta_t-\gamma d
-]
+$
 
 Damping helps stabilize ill-conditioned systems. A backtracking line search accepts a step only when it reduces the regularized objective. The implementation also checks finite values and stopping tolerances.
 
@@ -267,15 +267,15 @@ The reported Newton loss decreased from 0.693147 to 0.061183 over 10 accepted it
 
 ## 8. Explainability
 
-For standardized model input (z_j\), feature weight (w_j\), and bias (b\):
+For standardized model input (z_j), feature weight (w_j), and bias (b):
 
-[
+$
 c_j=w_jz_j
 \qquad
 \text{logit}=b+\sum_jc_j
 \qquad
 p(\text{Legitimate})=\sigma(\text{logit})
-]
+$
 
 - A positive contribution increases the logit and moves the prediction toward Legitimate (class 1).
 - A negative contribution decreases the logit and moves the prediction toward Phishing (class 0).
