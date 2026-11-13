@@ -92,6 +92,8 @@ The Optimization Lab runs the implemented Batch Gradient Descent and Newton-Raph
 
 Implementation: `src/phishx/models/logistic_regression.py` and `src/phishx/data/preprocessing.py`.
 
+**Scope clarification:** `docs/tld_popularity_ablation.json` is a historical, separate 16-feature audit experiment built with scikit-learn Logistic Regression. It is not the deployed five-feature PHISH-X model and is not the source of the performance metrics reported for the current application.
+
 ## Training and evaluation design
 
 - Uses the pre-generated **Group Split by Host** manifests.
