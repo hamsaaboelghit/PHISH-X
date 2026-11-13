@@ -34,6 +34,14 @@ MODEL_ARTIFACT_PATH = (
 )
 
 
+st.set_page_config(
+    page_title="PHISH-X | Threat Intelligence",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
 @st.cache_resource(show_spinner=False)
 def load_phishx_model(artifact_path: str):
     """Load the trusted local PHISH-X model artifact once per app process."""
@@ -46,14 +54,6 @@ def load_phishx_model(artifact_path: str):
     from phishx.inference import load_model_artifact
 
     return load_model_artifact(artifact_path)
-
-st.set_page_config(
-    page_title="PHISH-X | Threat Intelligence",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
 
 # ============================================================
 # DESIGN SYSTEM
