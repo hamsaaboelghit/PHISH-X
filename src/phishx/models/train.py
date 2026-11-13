@@ -1,15 +1,20 @@
 """Train, evaluate, and save the PHISH-X Newton Logistic Regression artifact.
 
 Run from the repository root:
-    python -m phishx.models.train
+    python src/phishx/models/train.py
 The serialized artifact is written locally and is intentionally not committed.
 """
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import joblib
+
+SOURCE_ROOT = Path(__file__).resolve().parents[2]
+if str(SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SOURCE_ROOT))
 
 from phishx.data.preprocessing import prepare_group_data
 from phishx.models.training import evaluate_model, train_model
