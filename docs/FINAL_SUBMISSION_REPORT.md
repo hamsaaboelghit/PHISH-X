@@ -206,7 +206,7 @@ PHISH-X should be treated as a decision-support and educational analysis tool, w
 
 | Team member | Responsibility |
 |---|---|
-| Hamsa Aboelghit | Project Lead / Architecture & Integration |
+| Hamsa Aboelghit | AI / Team Lead |
 | Noruhan Ali | AI |
 | Eyad Mohamed | Security |
 | Roaa Elgarf | AI |
