@@ -16,7 +16,7 @@ SOURCE_ROOT = Path(__file__).resolve().parents[2]
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
-from phishx.data.preprocessing import prepare_group_data
+from phishx.data.dataset import load_group_split
 from phishx.models.training import evaluate_model, train_model
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -37,7 +37,10 @@ METRICS_PATH = (
 
 
 def main() -> None:
-    X_train, X_test, y_train, y_test, _ = prepare_group_data()
+    # Keep the source data raw here. train_model fits the numerical scaler
+    # on Group Train and stores that exact scaler in the inference artifact.
+    # evaluate_model then applies the same scaler once to raw Group Test data.
+    X_train, X_test, y_train, y_test = load_group_split()
 
     artifact = train_model(
         X_train,
