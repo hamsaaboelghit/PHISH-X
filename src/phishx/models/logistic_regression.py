@@ -101,7 +101,7 @@ def _solve_linear_system(matrix, vector):
 
     n = b.size
     scale = float(np.max(np.abs(A)))
-    pivot_tolerance = np.finfo(float).eps * max(1.0, scale) * n
+    pivot_tolerance = np.finfo(float).eps * scale * n
 
     # Forward elimination with partial pivoting.
     for column in range(n):
@@ -521,7 +521,7 @@ def newton_method(
         gradient = np.append(dw, db)
 
         # Stop if the gradient is sufficiently small
-        if np.linalg.norm(gradient) <= tolerance:
+        if _vector_norm(gradient) <= tolerance:
             break
 
         hessian = compute_hessian(
