@@ -202,6 +202,17 @@ These results describe the reported test run; rerun the commands above against t
 
 PHISH-X should be treated as a decision-support and educational analysis tool, with suspicious results reviewed by a human analyst.
 
+## Project Team
+
+| Team member | Responsibility |
+|---|---|
+| Hamsa Aboelghit | Project Lead / Architecture & Integration |
+| Noruhan Ali | AI |
+| Eyad Mohamed | Security |
+| Roaa Elgarf | AI |
+| Shawky Ahmed | Security |
+| Amina Sabry | AI |
+
 ## 11. Conclusion
 
 PHISH-X combines a manually implemented numerical Logistic Regression training pipeline with URL feature extraction, interpretable model-score contributions, independent structural security advisories, and a Streamlit analyst workbench. Its central numerical-computations contribution is the explicit implementation of standardization, binary cross-entropy, analytical derivatives, Gradient Descent, Newton-Raphson optimization, and Gaussian Elimination with Partial Pivoting, supported by a host-grouped evaluation protocol and automated tests.
