@@ -208,6 +208,21 @@ tests/                        Automated unit and integration-contract tests
 docs/                         Detailed feature and security specification
 ```
 
+## Project Team
+
+PHISH-X is developed by a six-member team:
+
+| Team member | Responsibility |
+|---|---|
+| Hamsa Aboelghit | Project Lead / Architecture & Integration |
+| Noruhan Ali | AI |
+| Eyad Mohamed | Security |
+| Roaa Elgarf | AI |
+| Shawky Ahmed | Security |
+| Amina Sabry | AI |
+
+See [Project Team](docs/TEAM.md) for the team overview.
+
 ## Further documentation
 
 - [Project Proposal Summary](docs/PROJECT_PROPOSAL.md)
