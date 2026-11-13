@@ -610,6 +610,8 @@ with st.sidebar:
             "Model Evaluation",
             "Optimization Lab",
             "URL Investigation",
+            "Threat Simulation Lab",
+            "Confidence & Uncertainty",
         ],
         label_visibility="collapsed",
     )
@@ -1729,6 +1731,329 @@ elif page == "URL Investigation":
 
             The URL is parsed locally. PHISH-X does not visit the URL, perform DNS
             lookups, or contact the destination website.
+            """
+        )
+
+
+
+# ============================================================
+# PAGE 5 — THREAT SIMULATION LAB
+# ============================================================
+
+elif page == "Threat Simulation Lab":
+
+    page_header(
+        "SECURITY RESEARCH / CONTROLLED URL PERTURBATION",
+        "Threat Simulation Lab",
+        "Explore how controlled URL-structure changes affect PHISH-X predictions and model features.",
+    )
+
+    st.markdown(
+        """
+        <div class="hero">
+            <div class="hero-kicker">ROBUSTNESS / WHAT-IF ANALYSIS</div>
+            <div class="hero-title">Change the signal. Compare the response.</div>
+            <div class="hero-text">
+                Generate local, synthetic URL variations and compare their
+                model outputs. No URL is opened, fetched, or sent to a remote service.
+            </div>
+            <span class="hero-tag">CONTROLLED PERTURBATIONS</span>
+            <span class="hero-tag">SIDE-BY-SIDE ANALYSIS</span>
+            <span class="hero-tag">NO LIVE REQUESTS</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container(border=True):
+        simulation_url = st.text_input(
+            "Base URL",
+            placeholder="https://example.com/login",
+            key="phishx_simulation_url",
+        )
+        run_simulation = st.button(
+            "RUN WHAT-IF SIMULATION",
+            type="primary",
+            width="stretch",
+        )
+
+    if run_simulation:
+        if not simulation_url.strip():
+            st.warning("Enter a URL to create simulation variants.")
+        elif not MODEL_ARTIFACT_PATH.is_file():
+            st.error("The trained model artifact was not found. Train the model first.")
+        else:
+            try:
+                import sys
+                from urllib.parse import urlsplit
+
+                source_root = str(ROOT / "src")
+                if source_root not in sys.path:
+                    sys.path.insert(0, source_root)
+
+                from phishx.inference import predict_url
+
+                base = simulation_url.strip()
+                parse_candidate = base
+                if not re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", parse_candidate):
+                    parse_candidate = "https://" + parse_candidate
+                parsed = urlsplit(parse_candidate)
+                if parsed.scheme.lower() not in ("http", "https") or not parsed.hostname:
+                    raise ValueError("Enter a valid HTTP or HTTPS URL with a hostname.")
+                if parsed.username or parsed.password:
+                    raise ValueError("For this simulation, use a URL without embedded credentials.")
+
+                artifact = load_phishx_model(str(MODEL_ARTIFACT_PATH))
+                variants = [("Original", parsed.geturl(), "Baseline input")]
+                variants.append((
+                    "Scheme change",
+                    parsed._replace(scheme="http" if parsed.scheme.lower() == "https" else "https").geturl(),
+                    "Changes only the URL scheme",
+                ))
+                variants.append((
+                    "Added login subdomain",
+                    parsed._replace(netloc="login." + parsed.netloc).geturl(),
+                    "Adds a synthetic subdomain label",
+                ))
+                variants.append((
+                    "Added account path",
+                    parsed._replace(path=parsed.path.rstrip("/") + "/account/verify").geturl(),
+                    "Appends a synthetic path segment",
+                ))
+                query = parsed.query
+                query = query + ("&" if query else "") + "ref=phishx-simulation"
+                variants.append((
+                    "Added query marker",
+                    parsed._replace(query=query).geturl(),
+                    "Adds a synthetic query parameter",
+                ))
+
+                unique_variants = []
+                seen_urls = set()
+                for label, candidate_url, description in variants:
+                    if candidate_url not in seen_urls:
+                        seen_urls.add(candidate_url)
+                        unique_variants.append((label, candidate_url, description))
+
+                rows = []
+                details = []
+                for label, candidate_url, description in unique_variants:
+                    prediction = predict_url(candidate_url, artifact)
+                    rows.append({
+                        "Scenario": label,
+                        "Prediction": prediction.prediction,
+                        "Phishing probability": prediction.phishing_probability,
+                        "Legitimate probability": prediction.legitimate_probability,
+                        "Description": description,
+                    })
+                    details.append((label, prediction))
+
+                st.session_state["phishx_simulation_rows"] = rows
+                st.session_state["phishx_simulation_details"] = details
+                st.success("Controlled URL variations were analyzed locally.")
+            except (ValueError, TypeError) as exc:
+                st.error(f"Simulation input could not be processed: {exc}")
+            except Exception as exc:
+                st.error(f"Simulation failed. Verify the local model artifact and dependencies. Details: {exc}")
+
+    simulation_rows = st.session_state.get("phishx_simulation_rows")
+    if simulation_rows:
+        st.markdown("### Scenario comparison")
+        comparison_frame = pd.DataFrame(simulation_rows)
+        st.dataframe(
+            comparison_frame.style.format({
+                "Phishing probability": "{:.2%}",
+                "Legitimate probability": "{:.2%}",
+            }),
+            width="stretch",
+            hide_index=True,
+        )
+        st.bar_chart(
+            comparison_frame.set_index("Scenario")[
+                ["Phishing probability", "Legitimate probability"]
+            ]
+        )
+
+        st.markdown("### Feature-level changes")
+        base_details = st.session_state["phishx_simulation_details"][0][1]
+        for scenario_name, scenario_result in st.session_state["phishx_simulation_details"][1:]:
+            with st.expander(scenario_name):
+                feature_rows = []
+                for feature_name, base_value in base_details.model_features.items():
+                    changed_value = scenario_result.model_features[feature_name]
+                    feature_rows.append({
+                        "Feature": feature_name,
+                        "Original": base_value,
+                        "Simulated": changed_value,
+                        "Difference": changed_value - base_value,
+                        "Logit contribution": scenario_result.contributions[feature_name],
+                    })
+                st.dataframe(
+                    pd.DataFrame(feature_rows).style.format({
+                        "Original": "{:.4g}",
+                        "Simulated": "{:.4g}",
+                        "Difference": "{:+.4g}",
+                        "Logit contribution": "{:+.6f}",
+                    }),
+                    width="stretch",
+                    hide_index=True,
+                )
+                st.caption(
+                    f"Scenario prediction: {scenario_result.prediction}. "
+                    f"Phishing probability: {scenario_result.phishing_probability:.2%}."
+                )
+
+        st.warning(
+            "Research limitation: these are controlled lexical/structural perturbations, "
+            "not live attacks or a complete adversarial-robustness benchmark. A changed "
+            "prediction does not prove that a real website is malicious."
+        )
+
+    with st.expander("How to interpret this lab"):
+        st.markdown(
+            """
+            - Each scenario is analyzed locally with the same saved model artifact.
+            - The URL is transformed in memory; no network request is made.
+            - Only the model's five documented features are used for prediction.
+            - A prediction change indicates sensitivity to that specific synthetic edit,
+              not a universal security rule.
+            - The rule-based security assessment remains separate from the model output.
+            """
+        )
+
+
+# ============================================================
+# PAGE 6 — CONFIDENCE & UNCERTAINTY LAB
+# ============================================================
+
+elif page == "Confidence & Uncertainty":
+
+    page_header(
+        "MODEL DIAGNOSTICS / DECISION UNCERTAINTY",
+        "Confidence & Uncertainty Lab",
+        "Inspect probability balance, distance from the decision threshold and threshold sensitivity.",
+    )
+
+    st.markdown(
+        """
+        <div class="hero">
+            <div class="hero-kicker">MODEL INTERPRETATION / DECISION SUPPORT</div>
+            <div class="hero-title">A score is not the same as certainty.</div>
+            <div class="hero-text">
+                Examine how close a prediction is to the decision boundary.
+                This page reports model-score diagnostics, not calibrated confidence.
+            </div>
+            <span class="hero-tag">PROBABILITY BALANCE</span>
+            <span class="hero-tag">DECISION MARGIN</span>
+            <span class="hero-tag">THRESHOLD SENSITIVITY</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.container(border=True):
+        uncertainty_url = st.text_input(
+            "URL to evaluate",
+            placeholder="https://example.com/login",
+            key="phishx_uncertainty_url",
+        )
+        analysis_threshold = st.slider(
+            "Explore decision threshold",
+            min_value=0.10,
+            max_value=0.90,
+            value=0.50,
+            step=0.01,
+            help="This changes the displayed decision only; it does not retrain or modify the saved model.",
+        )
+        run_uncertainty = st.button(
+            "ANALYZE SCORE UNCERTAINTY",
+            type="primary",
+            width="stretch",
+        )
+
+    if run_uncertainty:
+        if not uncertainty_url.strip():
+            st.warning("Enter a URL first.")
+        elif not MODEL_ARTIFACT_PATH.is_file():
+            st.error("The trained model artifact was not found. Train the model first.")
+        else:
+            try:
+                import sys
+
+                source_root = str(ROOT / "src")
+                if source_root not in sys.path:
+                    sys.path.insert(0, source_root)
+
+                from phishx.inference import predict_url
+
+                artifact = load_phishx_model(str(MODEL_ARTIFACT_PATH))
+                uncertainty_result = predict_url(uncertainty_url.strip(), artifact)
+                st.session_state["phishx_uncertainty_result"] = uncertainty_result
+                st.success("Model-score diagnostics completed.")
+            except (ValueError, TypeError) as exc:
+                st.error(f"URL could not be analyzed: {exc}")
+            except Exception as exc:
+                st.error(f"Analysis failed. Verify the local model artifact. Details: {exc}")
+
+    uncertainty_result = st.session_state.get("phishx_uncertainty_result")
+    if uncertainty_result is not None:
+        threshold = float(analysis_threshold)
+        phishing_probability = float(uncertainty_result.phishing_probability)
+        legitimate_probability = float(uncertainty_result.legitimate_probability)
+        threshold_decision = (
+            "Legitimate" if legitimate_probability >= threshold else "Phishing"
+        )
+        distance = abs(legitimate_probability - threshold)
+        top_class_score = max(phishing_probability, legitimate_probability)
+        epsilon = 1e-12
+        p = min(max(legitimate_probability, epsilon), 1.0 - epsilon)
+        entropy = -(p * math.log(p, 2) + (1.0 - p) * math.log(1.0 - p, 2))
+
+        st.markdown("### Model score")
+        st.write(f"Target: {html.escape(uncertainty_result.url)}")
+        probability_cols = st.columns(2)
+        probability_cols[0].metric("Phishing probability", f"{phishing_probability:.2%}")
+        probability_cols[1].metric("Legitimate probability", f"{legitimate_probability:.2%}")
+
+        diagnostic_cols = st.columns(4)
+        diagnostic_cols[0].metric("Top-class score", f"{top_class_score:.2%}")
+        diagnostic_cols[1].metric("Decision margin", f"{distance:.2%}")
+        diagnostic_cols[2].metric("Normalized entropy", f"{entropy:.3f} / 1.000")
+        diagnostic_cols[3].metric("Explored threshold", f"{threshold:.2f}")
+
+        st.markdown("### Decision-boundary interpretation")
+        if distance < 0.05:
+            st.warning("Very close to the selected threshold: the decision is highly threshold-sensitive.")
+        elif distance < 0.15:
+            st.info("Relatively close to the selected threshold: interpret the class decision cautiously.")
+        else:
+            st.success("The score is farther from the selected threshold for this model decision.")
+
+        st.metric("Class at selected threshold", threshold_decision)
+        st.caption(
+            f"Artifact's original threshold: {uncertainty_result.threshold:.2f}. "
+            f"Original model decision: {uncertainty_result.prediction}. "
+            "The slider changes only the displayed what-if decision."
+        )
+        st.progress(min(max(legitimate_probability, 0.0), 1.0))
+        st.caption("Progress bar shows the model's Legitimate-class score (label 1).")
+
+        st.warning(
+            "Important: the top-class score is only a confidence proxy, and entropy/margin "
+            "are score-based uncertainty indicators. They are not calibrated probabilities, "
+            "do not measure real-world certainty, and are not a substitute for external validation."
+        )
+
+    with st.expander("Definitions and limitations"):
+        st.latex(r"\text{Decision margin}=|P(\text{Legitimate})-\text{threshold}|")
+        st.latex(r"H(p)=-p\log_2(p)-(1-p)\log_2(1-p)")
+        st.markdown(
+            """
+            - A small decision margin means the score is close to the chosen cutoff.
+            - Binary entropy is highest near a 50/50 score split and lowest near 0 or 1.
+            - A high top-class score does not guarantee correctness.
+            - Probability calibration would require a separate held-out calibration
+              procedure and reliability analysis; PHISH-X does not claim that here.
             """
         )
 
