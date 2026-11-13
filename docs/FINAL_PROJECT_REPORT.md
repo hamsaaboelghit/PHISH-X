@@ -343,6 +343,17 @@ streamlit run app/main.py
 
 For a fresh clone, ensure the approved dataset and split CSVs are present at the paths documented in the README. Generate the model artifact before using URL Investigation or Model Evaluation.
 
+## Project team
+
+| Team member | Responsibility |
+|---|---|
+| Hamsa Aboelghit | Project Lead / Architecture & Integration |
+| Noruhan Ali | AI |
+| Eyad Mohamed | Security |
+| Roaa Elgarf | AI |
+| Shawky Ahmed | Security |
+| Amina Sabry | AI |
+
 ## 13. Conclusion
 
 PHISH-X combines a manually implemented numerical Logistic Regression pipeline with a practical URL-analysis interface. Its strongest course contribution is not merely using a library model: it explicitly computes the objective, gradient, Hessian, Newton direction, and Gaussian-elimination solution, while also implementing and comparing Batch Gradient Descent. The project adds transparent logit contributions and a separate structural advisory channel to make predictions easier to inspect. Its reported results are strong on the supplied host-separated test split, but the dataset limitations and the distinction between model probability and structural warning must remain explicit in any demonstration or submission.
