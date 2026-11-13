@@ -1,10 +1,13 @@
+import joblib
 import numpy as np
 import pytest
+from sklearn.preprocessing import StandardScaler
 
 from phishx.explainability.contributions import explain_logit
 from phishx.inference import (
     ArtifactContractError,
     MODEL_FEATURES,
+    load_model_artifact,
     predict_url,
     validate_artifact,
 )
@@ -68,10 +71,15 @@ def test_validate_artifact_accepts_current_five_feature_contract():
     [
         {"weights": np.zeros(4)},
         {"weights": np.array([0, 0, 0, 0, np.nan])},
+        {"weights": "not-numeric"},
         {"bias": np.nan},
-        {"threshold": 1.0},
+        {"threshold": -0.1},
+        {"threshold": 1.1},
         {"feature_columns": tuple(reversed(MODEL_FEATURES))},
+        {"feature_columns": None},
         {"label_mapping": {0: "Legitimate", 1: "Phishing"}},
+        {"label_mapping": {"bad": "Phishing", 1: "Legitimate"}},
+        {"label_mapping": {False: "Phishing", 1: "Legitimate"}},
         {"feature_spec_version": "future"},
         {"scaler": object()},
     ],
@@ -81,9 +89,15 @@ def test_validate_artifact_rejects_contract_mismatch(overrides):
         validate_artifact(artifact(**overrides))
 
 
+@pytest.mark.parametrize("threshold", [0.0, 1.0])
+def test_validate_artifact_accepts_boundary_thresholds(threshold):
+    assert validate_artifact(artifact(threshold=threshold))["threshold"] == threshold
+
+
 def test_prediction_uses_exact_feature_names_and_returns_separate_security_signals():
     result = predict_url("https://example.com/login", artifact())
     assert result.prediction in {"Phishing", "Legitimate"}
+    assert result.label == result.prediction
     assert 0 <= result.phishing_probability <= 1
     assert 0 <= result.legitimate_probability <= 1
     assert result.phishing_probability + result.legitimate_probability == pytest.approx(1)
@@ -93,6 +107,39 @@ def test_prediction_uses_exact_feature_names_and_returns_separate_security_signa
         sum(result.contributions.values()) + result.bias_contribution
     )
     assert result.security_signals["parsed"] is True
+
+
+def test_joblib_artifact_load_and_standard_scaler_end_to_end(tmp_path):
+    training_features = np.array(
+        [
+            [10, 1, 2.1, 1, 4],
+            [40, 5, 3.7, 3, 12],
+            [80, 9, 4.2, 5, 30],
+            [120, 15, 4.8, 7, 55],
+        ],
+        dtype=float,
+    )
+    scaler = StandardScaler().fit(
+        __import__("pandas").DataFrame(training_features, columns=MODEL_FEATURES)
+    )
+    model_artifact = artifact(scaler=scaler)
+    path = tmp_path / "model.joblib"
+    joblib.dump(model_artifact, path)
+
+    loaded = load_model_artifact(path)
+    result = predict_url("https://example.com/login", loaded)
+
+    assert result.prediction in {"Phishing", "Legitimate"}
+    assert result.security_signals["parsed"] is True
+    assert result.phishing_probability + result.legitimate_probability == pytest.approx(1)
+    assert result.logit == pytest.approx(
+        result.bias_contribution + sum(result.contributions.values())
+    )
+
+
+def test_load_model_artifact_rejects_missing_file(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_model_artifact(tmp_path / "missing.joblib")
 
 
 @pytest.mark.parametrize("bad_url", ["", None, 7, "x" * 9000])
