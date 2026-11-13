@@ -128,7 +128,7 @@ METRICS: [
 
 This confirms that the page executed in the Streamlit test harness and rendered the expected metric labels. It is not a claim of manual visual inspection in a browser.
 
-The run emitted a bare-mode `ScriptRunContext` warning and deprecation warnings for `use_container_width`; these did not produce AppTest exceptions. The deprecation warning should be removed by migrating the relevant calls to the Streamlit `width` argument.
+The run emitted a bare-mode `ScriptRunContext` warning and deprecation warnings for `use_container_width`; these did not produce AppTest exceptions. The current `main` implementation has since migrated all 14 affected calls to Streamlit's `width="stretch"` argument. The local AppTest result above predates that cleanup, so the updated UI argument should be included in the next local smoke test.
 
 ## 5. GitHub Actions status
 
