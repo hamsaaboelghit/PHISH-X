@@ -235,6 +235,6 @@ def test_schemeless_host_port_is_preserved(url, host, port):
 
 
 def test_parser_normalization_helper_matches_strict_parser():
-    raw = "  http://exa\\nmple.com/\\tlogin  "
+    raw = "  http://exa\nmple.com/\tlogin  "
     assert normalize_url_text(raw) == "http://example.com/login"
     assert parse_url(raw).host == "example.com"
