@@ -94,4 +94,40 @@ def test_optimization_lab_runs_both_numerical_methods() -> None:
     assert "newton_method" in source
     assert "Run numerical comparison" in source
     assert "convergence" in source
+
     assert "not connected yet" not in source
+
+
+def test_model_evaluation_page_displays_class_specific_metrics() -> None:
+    tree = ast.parse(APP_PATH.read_text(encoding="utf-8"))
+    evaluation_page = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        test = node.test
+        if (
+            isinstance(test, ast.Compare)
+            and isinstance(test.left, ast.Name)
+            and test.left.id == "page"
+            and any(
+                isinstance(operator, ast.Eq)
+                and isinstance(comparator, ast.Constant)
+                and comparator.value == "Model Evaluation"
+                for operator, comparator in zip(test.ops, test.comparators)
+            )
+        ):
+            evaluation_page = node
+            break
+
+    assert evaluation_page is not None, "Model Evaluation page was not found."
+    source = ast.unparse(evaluation_page)
+    for required_output in (
+        "class_metrics",
+        "phishing",
+        "legitimate",
+        "confusion_matrix",
+        "dataset_split",
+        "Phishing Recall",
+        "Legitimate Precision",
+    ):
+        assert required_output in source

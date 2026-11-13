@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import json
 import os
 from urllib.parse import urlsplit
 from collections import Counter
@@ -32,6 +33,7 @@ MODEL_ARTIFACT_PATH = (
     if _configured_artifact.is_absolute()
     else ROOT / _configured_artifact
 )
+METRICS_PATH = ROOT / "data" / "processed" / "model_artifacts" / "training_metrics.json"
 
 
 st.set_page_config(
@@ -605,6 +607,7 @@ with st.sidebar:
         [
             "Overview",
             "Dataset Intelligence",
+            "Model Evaluation",
             "Optimization Lab",
             "URL Investigation",
         ],
@@ -1123,6 +1126,109 @@ elif page == "Dataset Intelligence":
             "Duplicate records and class composition require investigation "
             "before model training. This page does not automatically clean or modify the raw dataset."
         )
+
+
+
+
+# ============================================================
+# MODEL EVALUATION — HELD-OUT GROUP TEST SET
+# ============================================================
+
+elif page == "Model Evaluation":
+
+    page_header(
+        "MODEL VALIDATION / HELD-OUT TEST RESULTS",
+        "Model Evaluation",
+        "Performance measured on the held-out Group Test set, separated by URL class.",
+    )
+
+    if not METRICS_PATH.is_file():
+        st.warning(
+            "Training metrics are not available yet. Run "
+            "`python src/phishx/models/train.py` from the project root "
+            "to train the model and generate the evaluation report."
+        )
+    else:
+        try:
+            metrics_report = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+            evaluation = metrics_report["evaluation"]
+            class_metrics = evaluation["class_metrics"]
+            phishing_metrics = class_metrics["phishing"]
+            legitimate_metrics = class_metrics["legitimate"]
+            confusion = evaluation["confusion_matrix"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            st.error(
+                "The evaluation report is missing required fields or is invalid. "
+                f"Regenerate it by running the training script. Details: {exc}"
+            )
+        else:
+            st.markdown(
+                """
+                <div class="hero">
+                    <div class="hero-kicker">HELD-OUT VALIDATION</div>
+                    <div class="hero-title">Measure detection quality, class by class.</div>
+                    <div class="hero-text">
+                        The test set is separated by hostname from the training set.
+                        Phishing detection metrics are shown explicitly so they are
+                        not confused with the Legitimate positive-class metrics.
+                    </div>
+                    <span class="hero-tag">GROUP SPLIT BY HOST</span>
+                    <span class="hero-tag">CLASS-SPECIFIC METRICS</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            overview_cols = st.columns(4)
+            overview_cols[0].metric("Test samples", f"{evaluation['samples']:,}")
+            overview_cols[1].metric("Accuracy", f"{evaluation['accuracy']:.2%}")
+            overview_cols[2].metric("Decision threshold", f"{evaluation['threshold']:.2f}")
+            overview_cols[3].metric("Training iterations", str(metrics_report["training"]["iterations"]))
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            section_title("PHISHING DETECTION", "The security-critical class: 0 = Phishing.")
+
+            phishing_cols = st.columns(3)
+            phishing_cols[0].metric("Phishing Precision", f"{phishing_metrics['precision']:.2%}")
+            phishing_cols[1].metric("Phishing Recall", f"{phishing_metrics['recall']:.2%}")
+            phishing_cols[2].metric("Phishing F1-score", f"{phishing_metrics['f1_score']:.2%}")
+
+            section_title("LEGITIMATE CLASS", "Class 1 = Legitimate.")
+            legitimate_cols = st.columns(3)
+            legitimate_cols[0].metric("Legitimate Precision", f"{legitimate_metrics['precision']:.2%}")
+            legitimate_cols[1].metric("Legitimate Recall", f"{legitimate_metrics['recall']:.2%}")
+            legitimate_cols[2].metric("Legitimate F1-score", f"{legitimate_metrics['f1_score']:.2%}")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            left, right = st.columns([1, 1], gap="large")
+
+            with left:
+                section_title("CONFUSION MATRIX", "Actual class by predicted class.")
+                confusion_frame = pd.DataFrame(
+                    [
+                        [confusion["true_negative"], confusion["false_positive"]],
+                        [confusion["false_negative"], confusion["true_positive"]],
+                    ],
+                    index=["Actual Phishing", "Actual Legitimate"],
+                    columns=["Predicted Phishing", "Predicted Legitimate"],
+                )
+                st.dataframe(confusion_frame, use_container_width=True)
+                st.caption(
+                    "True Negative = correctly detected Phishing; "
+                    "True Positive = correctly identified Legitimate."
+                )
+
+            with right:
+                section_title("EVALUATION SETUP")
+                st.metric("Dataset split", metrics_report.get("dataset_split", "Not specified"))
+                st.metric("Feature specification", metrics_report.get("feature_spec_version", "Not specified"))
+                st.metric("Model optimizer", metrics_report["training"]["method"])
+                st.metric("Regularization (L2)", f"{metrics_report['training']['l2']:.4g}")
+
+            st.caption(
+                "Metrics describe this held-out dataset split, not a guarantee of "
+                "performance on every URL or on future phishing campaigns."
+            )
 
 
 # ============================================================
