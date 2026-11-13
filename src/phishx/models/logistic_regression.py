@@ -73,6 +73,65 @@ def _validate_training_data(X, y):
     return X, y
 
 
+
+def _vector_norm(values):
+    """Compute the Euclidean norm directly from its definition."""
+    values = np.asarray(values, dtype=float)
+    return float(np.sqrt(np.sum(values * values)))
+
+
+def _solve_linear_system(matrix, vector):
+    """
+    Solve A x = b using Gaussian elimination with partial pivoting.
+
+    This keeps the linear-system solver explicit instead of delegating
+    the numerical method to numpy.linalg.solve or numpy.linalg.pinv.
+    """
+    A = np.asarray(matrix, dtype=float).copy()
+    b = np.asarray(vector, dtype=float).copy()
+
+    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+        raise ValueError("matrix must be a square 2D array.")
+    if b.ndim != 1 or b.size != A.shape[0]:
+        raise ValueError("vector length must match matrix dimensions.")
+    if A.shape[0] == 0:
+        raise ValueError("matrix cannot be empty.")
+    if not np.isfinite(A).all() or not np.isfinite(b).all():
+        raise ValueError("matrix and vector must contain finite values.")
+
+    n = b.size
+    scale = float(np.max(np.abs(A)))
+    pivot_tolerance = np.finfo(float).eps * max(1.0, scale) * n
+
+    # Forward elimination with partial pivoting.
+    for column in range(n):
+        pivot_row = column + int(np.argmax(np.abs(A[column:, column])))
+        pivot_value = A[pivot_row, column]
+
+        if abs(pivot_value) <= pivot_tolerance:
+            raise np.linalg.LinAlgError("Matrix is singular or numerically singular.")
+
+        if pivot_row != column:
+            A[[column, pivot_row]] = A[[pivot_row, column]]
+            b[[column, pivot_row]] = b[[pivot_row, column]]
+
+        for row in range(column + 1, n):
+            factor = A[row, column] / A[column, column]
+            A[row, column] = 0.0
+            A[row, column + 1:] -= factor * A[column, column + 1:]
+            b[row] -= factor * b[column]
+
+    # Back substitution.
+    solution = np.zeros(n, dtype=float)
+    for row in range(n - 1, -1, -1):
+        residual = b[row] - np.sum(A[row, row + 1:] * solution[row + 1:])
+        solution[row] = residual / A[row, row]
+
+    if not np.isfinite(solution).all():
+        raise np.linalg.LinAlgError("Linear-system solution is not finite.")
+    return solution
+
+
 def sigmoid(z):
     """Calculate sigmoid probabilities safely."""
 
@@ -288,7 +347,7 @@ def gradient_descent(
         gradient = np.append(dw, db)
 
         # Stop if the gradient is sufficiently small
-        if np.linalg.norm(gradient) <= tolerance:
+        if _vector_norm(gradient) <= tolerance:
             break
 
         # Update parameters
@@ -469,13 +528,26 @@ def newton_method(
             X, weights, bias, l2
         )
 
-        # Damping improves numerical stability
-        hessian += damping * np.eye(n_features + 1)
+        # Solve the damped Newton system with our own Gaussian elimination.
+        # Increase damping if the Hessian is numerically singular.
+        current_damping = damping
+        direction = None
+        for _ in range(8):
+            regularized_hessian = (
+                hessian + current_damping * np.eye(n_features + 1)
+            )
+            try:
+                direction = _solve_linear_system(
+                    regularized_hessian, gradient
+                )
+                break
+            except np.linalg.LinAlgError:
+                current_damping *= 10.0
 
-        try:
-            direction = np.linalg.solve(hessian, gradient)
-        except np.linalg.LinAlgError:
-            direction = np.linalg.pinv(hessian) @ gradient
+        if direction is None:
+            raise np.linalg.LinAlgError(
+                "Unable to solve the damped Newton system."
+            )
 
         if not np.isfinite(direction).all():
             raise ValueError("Newton direction contains non-finite values.")
@@ -527,7 +599,7 @@ def newton_method(
             break
 
         # Stop if parameter update is sufficiently small
-        if np.linalg.norm(step_size * direction) <= tolerance:
+        if _vector_norm(step_size * direction) <= tolerance:
             break
 
         previous_loss = candidate_loss
