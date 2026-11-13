@@ -17,6 +17,7 @@ from phishx.explainability.contributions import explain_logit
 from phishx.features.url_features import FEATURE_SPEC_VERSION, extract_features
 from phishx.features.url_signals import analyze_url_security
 from phishx.models.logistic_regression import predict_proba
+from phishx.security_assessment import assess_security
 
 MODEL_FEATURES = (
     "url_length",
@@ -46,6 +47,7 @@ class PredictionResult:
     logit: float
     extraction_warnings: tuple[str, ...]
     security_signals: dict[str, Any]
+    security_assessment: dict[str, Any]
 
     @property
     def label(self) -> str:
@@ -66,6 +68,7 @@ class PredictionResult:
             "logit": self.logit,
             "extraction_warnings": list(self.extraction_warnings),
             "security_signals": dict(self.security_signals),
+            "security_assessment": dict(self.security_assessment),
         }
 
 
@@ -219,6 +222,7 @@ def predict_url(url: object, artifact: Mapping[str, Any]) -> PredictionResult:
     )
 
     signals = analyze_url_security(url)
+    assessment = assess_security(signals.as_dict(), extracted.warnings)
     return PredictionResult(
         url=extracted.url,
         prediction=model["label_mapping"][predicted_label],
@@ -232,4 +236,5 @@ def predict_url(url: object, artifact: Mapping[str, Any]) -> PredictionResult:
         logit=logit,
         extraction_warnings=extracted.warnings,
         security_signals=signals.as_dict(),
+        security_assessment=assessment,
     )
