@@ -64,3 +64,34 @@ def test_url_investigation_no_longer_uses_the_legacy_manual_signal_only_path() -
     source = ast.unparse(page)
     assert "extract_basic_signals" not in source
     assert "predict_url" in source
+
+
+
+def test_optimization_lab_runs_both_numerical_methods() -> None:
+    tree = ast.parse(APP_PATH.read_text(encoding="utf-8"))
+    optimization_page = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        test = node.test
+        if (
+            isinstance(test, ast.Compare)
+            and isinstance(test.left, ast.Name)
+            and test.left.id == "page"
+            and any(
+                isinstance(operator, ast.Eq)
+                and isinstance(comparator, ast.Constant)
+                and comparator.value == "Optimization Lab"
+                for operator, comparator in zip(test.ops, test.comparators)
+            )
+        ):
+            optimization_page = node
+            break
+
+    assert optimization_page is not None, "Optimization Lab page was not found."
+    source = ast.unparse(optimization_page)
+    assert "gradient_descent" in source
+    assert "newton_method" in source
+    assert "Run numerical comparison" in source
+    assert "convergence" in source
+    assert "not connected yet" not in source
