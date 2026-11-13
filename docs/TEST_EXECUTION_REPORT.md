@@ -1,134 +1,159 @@
-# Test Execution Report — Tasks 1–3 (Task 4 pending Eiad)
+# PHISH-X — Test Execution & Verification Report
 
-Date: 2026-11-12
-Branch: `shawky/security-tasks-1-3` (based on `main` at `38b5e2a`)
-Base: `origin/main` = `38b5e2a` (Merge PR #2). `git fetch origin` could not
-run in the sandbox (no remote configured there); the local `origin/main`
-ref from the initial clone was verified instead. Re-run `git fetch origin`
-on a machine with remote access before pushing.
+**Report date:** 13 November 2026  
+**Repository branch:** `main`  
+**Scope:** Current numerical model, inference pipeline, URL security analysis, Streamlit integration, and evaluation dashboard.
 
-## Task 1 — Test execution & verification
+> This report supersedes the historical task-by-task notes previously stored in this file. Older task/branch snapshots are not current test evidence.
 
-Command (as specified):
+## 1. Local full-suite result
+
+The project team ran the following command locally after integrating the numerical training pipeline, class-specific evaluation metrics, and Model Evaluation page:
 
 ```powershell
-$env:PYTHONPATH = "src"
-python -m unittest discover -s tests -v
+python -m pytest -q
 ```
 
-Equivalent run in this environment (`PYTHONPATH=src python3 -m unittest
-discover -s tests -v`):
+Reported terminal summary:
 
 ```text
-Ran 12 tests in 0.065s
-OK (skipped=1)
+319 passed, 1 skipped, 190 subtests passed
 ```
 
-| Result | Count |
+No failing tests were reported in this run.
+
+The test suite includes coverage for:
+
+- URL parser and security-signal behaviour.
+- Feature extraction and full-dataset feature parity.
+- Artifact validation and URL inference.
+- Manual Logistic Regression, sigmoid, loss, gradient, Hessian, and Newton solver.
+- Gaussian Elimination with Partial Pivoting.
+- Numerical standardization and training/inference scaling parity.
+- Finite-difference checks for analytical derivatives.
+- Hessian symmetry/positive-semidefinite properties.
+- Rank-deficient feature cases and optimizer comparisons.
+- Streamlit source/integration contracts.
+
+One test is reported as skipped. This report does not infer the skip reason from the aggregate summary; inspect the pytest output or test marker if the instructor asks about that specific skip.
+
+## 2. Training CLI verification
+
+The team ran:
+
+```powershell
+python src/phishx/models/train.py
+```
+
+The command completed and printed:
+
+- `PHISH-X NUMERICAL TRAINING COMPLETED`
+- Artifact path: `data/processed/model_artifacts/phishx_newton_model.joblib`
+- Metrics path: `data/processed/model_artifacts/training_metrics.json`
+
+Reported training/evaluation values:
+
+| Item | Result |
 |---|---:|
-| Passed | 11 |
-| Failed | 0 |
-| Skipped | 1 (`test_production_feature_contract`, blocked on Eiad contract) |
-| Total discovered | 12 |
+| Optimizer | Newton-Raphson Logistic Regression |
+| L2 | 0.001 |
+| Iterations | 10 |
+| Initial loss | 0.6931471806 |
+| Final loss | 0.0611826891 |
+| Group Test samples | 19,337 |
+| Accuracy | 98.0762% |
+| Phishing precision | 98.9144% |
+| Phishing recall | 97.9023% |
+| Phishing F1 | 98.4058% |
+| Legitimate precision | 96.8176% |
+| Legitimate recall | 98.3443% |
+| Legitimate F1 | 97.5750% |
 
-Discovery check: test files exist in the repository
-(`tests/test_url_security_cases.py`, `tests/cases/url_security_cases.json`)
-and discovery finds 12 tests (not `Ran 0 tests`). No failures were found,
-so no behavior was changed to make tests pass. (Initial Task 1 run found
-10 tests; Tasks 2–3 added 2 more: empty-dataset and parser-safety.)
+Confusion matrix:
 
-## Task 2 — Dataset label validation
+- True phishing predicted phishing: 11,481
+- True phishing predicted legitimate: 246
+- True legitimate predicted phishing: 126
+- True legitimate predicted legitimate: 7,484
 
-`validate_dataframe()` in `src/phishx/security_dataset_audit.py` requires
-both `ClassLabel` values `0` and `1`; a missing class raises `ValueError`
-with a clear message. Unit tests cover: both classes (int and float
-labels), class `0` only, class `1` only, and empty datasets (with and
-without required columns). Cohort `class_percent` values are asserted
-finite (no unintended `NaN` in JSON output); the cohorts computation also
-guards against `NaN` defensively.
+These are the team's reported local run values, not a promise of future or external performance.
 
-## Task 3 — Parser input safety (existing helpers only)
+## 3. Artifact-backed inference smoke test
 
-Characterization tests for `parse_hostname()`, `is_ip_address()` and
-`analyze_subdomain()` cover: `None`; integer and float inputs; empty and
-whitespace strings; `"Offline"` in multiple capitalizations; malformed
-URLs (broken IPv6 bracket, out-of-range port, embedded control
-character); and correct IPv4/IPv6. These tests characterize the current
-behavior of the existing audit helpers only — they do not prove that all
-malformed URLs are rejected, nor that a production extractor would be
-safe. Missing/non-string/empty/`Offline`/broken-bracket inputs return
-`None`/`False` and never raise, but other malformed inputs still yield
-hostnames (see below). No production feature definitions were changed.
+The team loaded the generated artifact through the public inference API:
 
-One safety fix was necessary: `is_ip_address()` previously passed
-non-string input to `ipaddress.ip_address()`, so integers/bools were
-misclassified as IPs (`123` → `True`, `0` → `False`). It now returns
-`False` for non-string input. String behavior is unchanged (all existing
-characterization tests still pass).
+```python
+from phishx.inference import load_model_artifact, predict_url
 
-Documented existing-helper behaviors (not changed, production must handle
-explicitly): out-of-range ports still yield a hostname; embedded newline
-is stripped by `urlsplit`; percent-encoded hosts are returned unvalidated.
+artifact = load_model_artifact(
+    "data/processed/model_artifacts/phishx_newton_model.joblib"
+)
+result = predict_url("https://example.com/login", artifact)
+print(result.as_dict())
+```
 
-## Task 4 — Production feature integration: BLOCKED
+Previously reported examples included:
 
-Not started. Awaiting Eiad's confirmed feature contract (module path,
-function interface, feature names/definitions, invalid-URL handling).
-`test_production_feature_contract` remains skipped. No alternative
-extractor or new feature definitions were created.
+- `https://example.com/login` → Legitimate, phishing probability approximately 0.1857.
+- `http://192.168.1.10/account/verify` → Phishing, phishing probability approximately 0.9995; the independent structural layer also reports a low-severity direct-IP advisory.
+- `https://secure-login.example` → a model output was produced, but `.example` is a reserved example domain and must not be represented as a live-site validation.
 
-## Production security limitations
+These are smoke-test examples, not a statistically representative test set.
 
-- The existing helper tests are **not** a substitute for production
-  feature validation. Passing them characterizes audit-helper behavior
-  only; it does not validate any production extractor.
-- Invalid ports, control characters, and percent-encoded hosts need
-  **explicit handling** in the production URL extractor. The current
-  helpers accept out-of-range port hosts, strip embedded newlines via
-  `urlsplit`, and return percent-encoded hosts unvalidated — production
-  must reject or normalize these by an agreed policy, not inherit the
-  helper behavior accidentally.
-- Task 4 stays **BLOCKED** until Eiad confirms the module path, function
-  interface, feature definitions, and invalid-URL behavior. No
-  production extractor tests are claimed complete before that agreement
-  and integration actually happen.
+## 4. Streamlit runtime verification
 
-## Verification summary
+The team ran Streamlit's `AppTest` against `app/main.py`, selected the **Model Evaluation** page, and inspected exceptions and rendered metrics.
 
-- `PYTHONPATH=src python -m unittest discover -s tests -v` → 11 passed,
-  0 failed, 1 skipped.
-- Audit evidence regenerates identically; dataset SHA256 unchanged
-  (`ed8d830fba05688b5f57f7e7deacb8f377268898cb6f36da50bde1eebd8d95ec`).
-- No dataset/split changes. No merge performed.
+Reported output:
 
-## Follow-up verification (feature repro + ablation)
+```text
+EXCEPTIONS: []
+METRICS: [
+  'Test samples',
+  'Accuracy',
+  'Decision threshold',
+  'Training iterations',
+  'Phishing Precision',
+  'Phishing Recall',
+  'Phishing F1-score',
+  'Legitimate Precision',
+  'Legitimate Recall',
+  'Legitimate F1-score',
+  'Dataset split',
+  'Feature specification',
+  'Model optimizer',
+  'Regularization (L2)'
+]
+```
 
-- Latest `main` verified: `38b5e2a` (local `origin/main` ref; `git fetch
-  origin` unavailable in sandbox — re-run on a machine with remote
-  access before pushing).
-- Branch: `shawky/feature-repro-ablation` (based on `main` at `38b5e2a`).
-- Command: `PYTHONPATH=src python -m unittest discover -s tests -v`
-- Result: **Ran 14 tests — OK (13 passed, 0 failed, 1 skipped)**.
-  The 2 new tests are the feature-definitions reproducibility checks
-  (known examples + full-dataset zero-mismatch assertion).
-- Skipped test: `test_production_feature_contract` — skipped because
-  Eiad has not yet confirmed the shared extractor module, interface,
-  and feature semantics (Task 4 BLOCKED). No production extractor
-  tests are claimed complete.
+This confirms that the page executed in the Streamlit test harness and rendered the expected metric labels. It is not a claim of manual visual inspection in a browser.
 
-## PR #8 follow-up verification (ablation fix + cleanup)
+The run emitted a bare-mode `ScriptRunContext` warning and deprecation warnings for `use_container_width`; these did not produce AppTest exceptions. The deprecation warning should be removed by migrating the relevant calls to the Streamlit `width` argument.
 
-- Branch: `shawky/pr8-followup-fixes` (based on `main` at `38b5e2a`).
-  Note: the reviewed `main` at `896241e` (after PR #8) is not available
-  in this sandbox (`git fetch origin` unavailable); tests were run on
-  the branch HEAD below. Re-run on a machine with remote access after
-  fetching `896241e` before merging.
-- Tested commit: `5877396` (HEAD at verification time; the report-update
-  commit follows it).
-- Command: `PYTHONPATH=src python -m unittest discover -s tests -v`
-- Result: **Ran 14 tests — OK (13 passed, 0 failed, 1 skipped)**.
-- Skipped test: `test_production_feature_contract` — skipped because
-  Eiad has not yet confirmed the production feature contract (module
-  path, function interface, feature definitions, invalid-URL handling).
-  Task 4 remains BLOCKED; no production extractor tests are claimed
-  complete.
+## 5. GitHub Actions status
+
+The latest push to `main` triggered the repository's URL feature test workflow. At the time this report was prepared, that push workflow was still in progress. The Core Inference and URL feature workflows associated with the immediately preceding documentation PR head had completed successfully.
+
+Always inspect the Actions page for the final status of the latest `main` commit before claiming that the newest remote CI run passed:
+
+https://github.com/hamsaaboelghit/PHISH-X/actions
+
+## 6. Reproduction commands
+
+From the repository root:
+
+```powershell
+python -m pytest -q
+python src/phishx/models/train.py
+streamlit run app/main.py
+```
+
+The training command requires the approved dataset and split manifests at the paths documented in the README. The generated Joblib artifact and JSON metrics report are local outputs and are not committed to the repository.
+
+## 7. Verification boundaries
+
+- A passing test suite verifies covered code paths; it does not prove that every possible URL is safe or correctly classified.
+- The reported model metrics are tied to the supplied dataset and Group Split by Host.
+- AppTest confirms execution and expected UI elements, not visual quality across every browser, screen size, or interaction.
+- Structural security findings are deterministic advisories, not calibrated probabilities.
+- Joblib artifacts must be loaded only from trusted sources.
