@@ -1,3 +1,5 @@
+> **Historical handoff note (12 November 2026):** this file records the earlier URL-security parser delivery and its then-current 188-test result. It is not the final project status. For the current implementation, metrics, and verification, see [Final Project Report](docs/FINAL_PROJECT_REPORT.md), [Test Execution Report](docs/TEST_EXECUTION_REPORT.md), and [Dataset & Evaluation Protocol](docs/DATASET_AND_EVALUATION_PROTOCOL.md).
+
 # URL Security & Feature Engineering — Delivery Notes
 
 ## Included fixes
