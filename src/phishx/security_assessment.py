@@ -15,6 +15,21 @@ def assess_security(
     findings: list[dict[str, str]] = []
     warnings = set(extraction_warnings)
 
+    scheme = str(signals.get("scheme") or "").lower()
+    if signals.get("is_opaque_scheme") or (
+        signals.get("has_explicit_scheme") and scheme not in {"http", "https"}
+    ):
+        findings.append({
+            "code": "unsupported_uri_scheme",
+            "severity": "medium",
+            "title": "Non-HTTP(S) URI scheme",
+            "description": (
+                "This input is not a standard HTTP(S) web URL. The phishing model "
+                "was evaluated on web-URL data, so its class and probabilities "
+                "should not be interpreted as a safety verdict for this URI."
+            ),
+        })
+
     if signals.get("has_userinfo") and signals.get("userinfo_contains_dot"):
         findings.append({
             "code": "misleading_userinfo",
