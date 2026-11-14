@@ -932,25 +932,41 @@ elif page == "Dataset Intelligence":
                 1: "Legitimate",
             })
 
+            phishing_values = plot_df.loc[
+                plot_df["ClassLabel"] == 0, selected_feature
+            ]
+            legitimate_values = plot_df.loc[
+                plot_df["ClassLabel"] == 1, selected_feature
+            ]
+            phishing_mean = float(phishing_values.mean())
+            legitimate_mean = float(legitimate_values.mean())
+            mean_difference = legitimate_mean - phishing_mean
+
             col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.metric(
-                    "Mean",
-                    f"{plot_df[selected_feature].mean():.3f}",
+                    "Phishing mean",
+                    f"{phishing_mean:.3f}",
                 )
 
             with col2:
                 st.metric(
-                    "Median",
-                    f"{plot_df[selected_feature].median():.3f}",
+                    "Legitimate mean",
+                    f"{legitimate_mean:.3f}",
                 )
 
             with col3:
                 st.metric(
-                    "Standard Deviation",
-                    f"{plot_df[selected_feature].std():.3f}",
+                    "Mean difference (L - P)",
+                    f"{mean_difference:+.3f}",
+                    help="Legitimate-class mean minus Phishing-class mean, in the selected feature's original units.",
                 )
+
+            st.caption(
+                "The comparison below is class-specific. Values are descriptive "
+                "statistics, not evidence that a feature causes a URL to be malicious."
+            )
 
             fig = px.histogram(
                 plot_df,
