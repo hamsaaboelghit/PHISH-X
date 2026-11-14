@@ -164,6 +164,7 @@ The dataset has collection biases and lexical shortcuts; only five lexical featu
 
 - [ ] Confirm the latest `main` commit is pulled locally.
 - [ ] Confirm the approved dataset and split manifests exist.
+- [ ] Review `docs/DATASET_VALIDATION_REPORT.md` for dataset counts, split isolation, feature parity, and documented discrepancies.
 - [ ] Run `python -m pytest -q` and keep the terminal result.
 - [ ] Run `python src/phishx/models/train.py` and confirm both artifact and metrics paths.
 - [ ] Launch Streamlit and verify URL Investigation, Optimization Lab, and Model Evaluation.
