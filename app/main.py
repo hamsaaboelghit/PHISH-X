@@ -1011,6 +1011,9 @@ elif page == "Dataset Intelligence":
         if "URL" in df.columns:
 
             def get_tld(url):
+                if pd.isna(url) or not str(url).strip():
+                    return "Unknown"
+
                 hostname = safe_hostname(str(url))
                 if not hostname:
                     return "Unknown"
@@ -1022,7 +1025,7 @@ elif page == "Dataset Intelligence":
                     pass
 
                 labels = hostname.lower().rstrip(".").split(".")
-                return labels[-1] if labels else "Unknown"
+                return labels[-1] if labels and labels[-1] else "Unknown"
 
             tld_df = df[["URL", "ClassLabel"]].copy()
             tld_df["TLD"] = tld_df["URL"].astype(str).apply(get_tld)
