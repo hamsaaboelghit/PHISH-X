@@ -1143,9 +1143,11 @@ elif page == "Dataset Intelligence":
                     width="stretch",
                 )
 
-        st.warning(
-            "Duplicate records and class composition require investigation "
-            "before model training. This page does not automatically clean or modify the raw dataset."
+        st.info(
+            "This audit describes the raw source dataset. Duplicate URL rows are "
+            "reported for transparency; the validated cleaned dataset and saved "
+            "train/test splits contain no duplicate URLs. This page does not "
+            "modify or automatically clean any dataset."
         )
 
 
