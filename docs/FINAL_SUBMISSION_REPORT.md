@@ -182,17 +182,26 @@ The generated model artifact is local runtime output and is intentionally not co
 
 ## 9. Validation Evidence
 
-The latest user-reported full test run on the integrated project completed with:
+The integrated project was tested locally on **14 November 2026**, after pulling the latest changes on the `main` branch (commit `9c31f7a`). The full test command:
+
+```bash
+python -m pytest tests -q
+```
+
+completed with:
 
 - **319 passed**
 - **1 skipped**
 - **190 subtests passed**
+- Runtime: **18.07 seconds**
 
-A fresh local rerun on **14 November 2026** produced the same result in 27.93 seconds. The GitHub Actions push workflow for commit `f238f2b77c17f6a3c7aeed12fbfd052820b70e09` also completed successfully.
+GitHub Actions also completed successfully for the three latest application fixes:
 
-The Streamlit AppTest for the Model Evaluation view reported no application exceptions and confirmed the expected metric labels were rendered.
+- `8be0dad` — class-specific Feature Explorer summary metrics
+- `a41a51d` — missing URL handling in TLD intelligence
+- `9c31f7a` — clarification of raw versus cleaned dataset quality warnings
 
-These results describe the reported test run; rerun the commands above against the final checked-out commit if a fresh delivery-time verification is required.
+These results verify the automated test suite and CI workflow for the integrated code. They do not represent a new model-training run or a fresh recalculation of the recorded held-out evaluation metrics.
 
 ## 10. Limitations and Responsible Use
 
