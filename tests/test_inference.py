@@ -170,6 +170,29 @@ def test_security_assessment_has_no_flags_for_plain_example_url():
     assert result.security_assessment["findings"] == []
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "javascript:alert(1)",
+        "data:text/plain,example",
+        "mailto:security@example.com",
+        "ftp://example.com/file.txt",
+    ],
+)
+def test_non_http_uri_schemes_are_flagged_as_out_of_scope(url):
+    result = predict_url(url, artifact())
+
+    assert result.prediction in {"Phishing", "Legitimate"}
+    assert result.phishing_probability + result.legitimate_probability == pytest.approx(1)
+    assert result.security_assessment["status"] == "warning"
+    assert result.security_assessment["risk_level"] == "medium"
+    assert any(
+        finding["code"] == "unsupported_uri_scheme"
+        for finding in result.security_assessment["findings"]
+    )
+    assert result.security_assessment["actual_host"] is None or url.startswith("ftp://")
+
+
 
 def test_security_assessment_flags_direct_ip_host_without_overriding_ml():
     result = predict_url("http://192.168.1.10/account/verify", artifact())
