@@ -15,6 +15,17 @@ def assess_security(
     findings: list[dict[str, str]] = []
     warnings = set(extraction_warnings)
 
+    if not signals.get("parsed", False):
+        findings.append({
+            "code": "security_parse_failed",
+            "severity": "medium",
+            "title": "Structural inspection incomplete",
+            "description": (
+                "The security-oriented URL parser could not fully inspect this input. "
+                "The model output must not be treated as a safety verdict."
+            ),
+        })
+
     scheme = str(signals.get("scheme") or "").lower()
     if signals.get("is_opaque_scheme") or scheme not in {"", "http", "https"}:
         findings.append({
