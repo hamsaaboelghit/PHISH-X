@@ -65,6 +65,8 @@ The prediction path is local. PHISH-X does not visit submitted URLs, perform DNS
 - **Optimization Lab:** runs the hand-implemented Batch Gradient Descent and Newton-Raphson methods on the same deterministic, class-balanced sample and compares loss, iterations, runtime, and convergence histories.
 - **Dataset Intelligence:** exposes dataset and feature information available in the application.
 - **Model Evaluation:** displays held-out sample count, accuracy, threshold, training iterations, class-specific precision/recall/F1, confusion matrix, and evaluation configuration.
+- **Threat Simulation Lab:** compares the saved model's scores and five model-feature values across controlled, locally generated URL variations. This is a limited sensitivity experiment, not a full adversarial-robustness benchmark.
+- **Confidence & Uncertainty Lab:** displays class scores, threshold distance, and binary entropy as score-based uncertainty indicators. These values are not calibrated confidence estimates.
 
 ## 3. Dataset and evaluation protocol
 
@@ -311,7 +313,7 @@ The team also ran the training CLI and confirmed that it generated the Joblib ar
 - `EXCEPTIONS: []`
 - All 14 expected metric/configuration labels were present.
 
-This is an automated Streamlit runtime test, not a claim of manual visual inspection in a browser. The latest GitHub Actions push workflow was still running when this report was prepared; consult the repository Actions page for its final result.
+This is an automated Streamlit runtime test, not a claim of manual visual inspection in a browser. The latest delivery-time GitHub Actions run for commit `f238f2b77c17f6a3c7aeed12fbfd052820b70e09` completed successfully on 14 November 2026. The local full-suite rerun on 14 November 2026 also completed with 319 passed, 1 skipped, and 190 subtests passed.
 
 ## 12. Reproduction and launch
 
