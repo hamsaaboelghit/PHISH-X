@@ -159,6 +159,8 @@ Structural security advisories are generated independently from the machine-lear
 - **Optimization Lab:** compares the implemented Gradient Descent and Newton-Raphson methods using loss histories, iteration counts, and runtime measurements.
 - **Dataset Intelligence:** presents dataset-oriented information available in the application.
 - **Model Evaluation:** presents held-out metrics, class-specific precision/recall/F1, confusion matrix, and model metadata.
+- **Threat Simulation Lab:** compares model outputs for controlled synthetic URL variations; it is a limited sensitivity experiment, not a full robustness benchmark.
+- **Confidence & Uncertainty Lab:** explores class scores, threshold distance, and binary entropy as uncalibrated score-based indicators.
 
 ## 8. Reproducibility and Run Instructions
 
@@ -185,6 +187,8 @@ The latest user-reported full test run on the integrated project completed with:
 - **319 passed**
 - **1 skipped**
 - **190 subtests passed**
+
+A fresh local rerun on **14 November 2026** produced the same result in 27.93 seconds. The GitHub Actions push workflow for commit `f238f2b77c17f6a3c7aeed12fbfd052820b70e09` also completed successfully.
 
 The Streamlit AppTest for the Model Evaluation view reported no application exceptions and confirmed the expected metric labels were rendered.
 
