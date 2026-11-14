@@ -10,7 +10,7 @@ The project is also a numerical-computations implementation: Logistic Regression
 - Predicts the class and reports phishing/legitimate probabilities.
 - Explains the model score through additive feature contributions in log-odds space.
 - Runs a separate structural security assessment. These advisories are not silently mixed into the model's feature vector.
-- Provides a Streamlit workbench with URL Investigation, Optimization Lab, Dataset Intelligence, and Model Evaluation views.
+- Provides a Streamlit workbench with URL Investigation, Optimization Lab, Dataset Intelligence, Model Evaluation, Threat Simulation Lab, and Confidence & Uncertainty Lab views.
 
 ## Model contract
 
