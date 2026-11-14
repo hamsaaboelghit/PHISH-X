@@ -194,6 +194,21 @@ def test_non_http_uri_schemes_are_flagged_as_out_of_scope(url):
 
 
 
+def test_security_assessment_warns_when_strict_parser_cannot_inspect_url():
+    # Legacy feature extraction accepts balanced brackets, while strict parsing
+    # rejects this invalid IPv6 literal. A model score must not look like a clean audit.
+    result = predict_url("http://[::gg]/login", artifact())
+
+    assert result.prediction in {"Phishing", "Legitimate"}
+    assert result.security_signals["parsed"] is False
+    assert result.security_assessment["status"] == "warning"
+    assert result.security_assessment["risk_level"] == "medium"
+    assert any(
+        finding["code"] == "security_parse_failed"
+        for finding in result.security_assessment["findings"]
+    )
+
+
 def test_security_assessment_flags_direct_ip_host_without_overriding_ml():
     result = predict_url("http://192.168.1.10/account/verify", artifact())
     assessment = result.security_assessment
