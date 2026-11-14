@@ -16,9 +16,7 @@ def assess_security(
     warnings = set(extraction_warnings)
 
     scheme = str(signals.get("scheme") or "").lower()
-    if signals.get("is_opaque_scheme") or (
-        signals.get("has_explicit_scheme") and scheme not in {"http", "https"}
-    ):
+    if signals.get("is_opaque_scheme") or scheme not in {"", "http", "https"}:
         findings.append({
             "code": "unsupported_uri_scheme",
             "severity": "medium",
