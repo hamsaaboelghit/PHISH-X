@@ -88,10 +88,10 @@ def main() -> None:
             "split": "Identical Group Split by Host",
             "phishing_metrics": {
                 "newton_logistic_regression": {
-                    "accuracy": metrics["accuracy"],
-                    "precision": metrics["class_metrics"]["phishing"]["precision"],
-                    "recall": metrics["class_metrics"]["phishing"]["recall"],
-                    "f1_score": metrics["class_metrics"]["phishing"]["f1_score"],
+                    "accuracy": metrics.get("accuracy"),
+                    "precision": metrics.get("class_metrics", {}).get("phishing", {}).get("precision"),
+                    "recall": metrics.get("class_metrics", {}).get("phishing", {}).get("recall"),
+                    "f1_score": metrics.get("class_metrics", {}).get("phishing", {}).get("f1_score"),
                 },
                 "gauss_least_squares_baseline": {
                     "accuracy": numerical_metrics["accuracy"],
