@@ -608,6 +608,7 @@ with st.sidebar:
             "Overview",
             "Dataset Intelligence",
             "Model Evaluation",
+            "Numerical Analysis & Comparison",
             "Optimization Lab",
             "URL Investigation",
             "Threat Simulation Lab",
@@ -1255,7 +1256,146 @@ elif page == "Model Evaluation":
 
 
 # ============================================================
-# PAGE 3 — OPTIMIZATION LAB
+# PAGE 3 — CLASSICAL NUMERICAL ANALYSIS & MODEL COMPARISON
+# ============================================================
+
+elif page == "Numerical Analysis & Comparison":
+
+    page_header(
+        "CLASSICAL NUMERICAL METHODS / SIDE-BY-SIDE VALIDATION",
+        "Numerical Analysis & Model Comparison",
+        "A syllabus-level least-squares baseline compared with the existing ML model on the same held-out Group Test set.",
+    )
+
+    if not METRICS_PATH.is_file():
+        st.warning(
+            "Evaluation metrics are not available. Run "
+            "`python src/phishx/models/train.py` from the project root first."
+        )
+    else:
+        try:
+            report = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+            numerical = report["numerical_analysis"]
+            numerical_eval = numerical["evaluation"]
+            comparison = report["comparison"]["phishing_metrics"]
+            demos = numerical["syllabus_demonstrations"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            st.error(
+                "The numerical-analysis report is missing or outdated. "
+                "Regenerate it by running the training script. Details: " + str(exc)
+            )
+        else:
+            st.markdown(
+                """
+                <div class="hero">
+                    <div class="hero-kicker">TWO MODELS / ONE FAIR TEST SET</div>
+                    <div class="hero-title">Classical numerical analysis meets machine learning.</div>
+                    <div class="hero-text">
+                        The existing Newton Logistic Regression remains the primary ML model.
+                        The second model is a simple straight-line least-squares baseline whose
+                        normal equations are solved using Gaussian Elimination. Both use the
+                        same Group Train / Group Test split and the same five URL features.
+                    </div>
+                    <span class="hero-tag">GAUSSIAN ELIMINATION</span>
+                    <span class="hero-tag">LEAST SQUARES</span>
+                    <span class="hero-tag">SAME GROUP TEST</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("### Model comparison — phishing is the positive class")
+            st.caption(
+                f"Both models were evaluated on the same {report['comparison']['test_samples']:,} "
+                "held-out URLs. Metrics are recalculated by the training script; no values are hard-coded."
+            )
+            comparison_frame = pd.DataFrame([
+                {
+                    "Model": "Newton Logistic Regression (existing ML)",
+                    "Accuracy": comparison["newton_logistic_regression"]["accuracy"],
+                    "Phishing Precision": comparison["newton_logistic_regression"]["precision"],
+                    "Phishing Recall": comparison["newton_logistic_regression"]["recall"],
+                    "Phishing F1": comparison["newton_logistic_regression"]["f1_score"],
+                },
+                {
+                    "Model": "Gauss + Least Squares (Numerical baseline)",
+                    "Accuracy": comparison["gauss_least_squares_baseline"]["accuracy"],
+                    "Phishing Precision": comparison["gauss_least_squares_baseline"]["precision"],
+                    "Phishing Recall": comparison["gauss_least_squares_baseline"]["recall"],
+                    "Phishing F1": comparison["gauss_least_squares_baseline"]["f1_score"],
+                },
+            ])
+            st.dataframe(
+                comparison_frame.style.format({
+                    "Accuracy": "{:.2%}",
+                    "Phishing Precision": "{:.2%}",
+                    "Phishing Recall": "{:.2%}",
+                    "Phishing F1": "{:.2%}",
+                }),
+                width="stretch",
+                hide_index=True,
+            )
+
+            st.markdown("### Numerical baseline results")
+            score_cols = st.columns(4)
+            score_cols[0].metric("Accuracy", f"{numerical_eval['accuracy']:.2%}")
+            score_cols[1].metric("Phishing Precision", f"{numerical_eval['phishing_precision']:.2%}")
+            score_cols[2].metric("Phishing Recall", f"{numerical_eval['phishing_recall']:.2%}")
+            score_cols[3].metric("Phishing F1", f"{numerical_eval['phishing_f1']:.2%}")
+
+            cm = numerical_eval["confusion_matrix"]
+            cm_frame = pd.DataFrame(
+                [[cm["tp"], cm["fn"]], [cm["fp"], cm["tn"]]],
+                index=["Actual Phishing", "Actual Legitimate"],
+                columns=["Predicted Phishing", "Predicted Legitimate"],
+            )
+            st.markdown("**Numerical baseline confusion matrix**")
+            st.dataframe(cm_frame, width="stretch")
+            st.caption(
+                "The least-squares model outputs a clipped score from 0 to 1. "
+                "It is not a calibrated probability and is used only as a simple comparison baseline."
+            )
+
+            st.markdown("### Syllabus methods — worked demonstrations")
+            st.caption(
+                "These are small, transparent method demonstrations. They are separate from "
+                "the five-feature URL classifier unless explicitly stated."
+            )
+            with st.expander("1. Nonlinear equations — Bisection, Newton, Secant, Fixed Point", expanded=True):
+                st.json(demos["root_finding"])
+                st.caption("Example equation: x² − 2 = 0. All four methods approximate √2.")
+            with st.expander("2. Linear systems — Gaussian Elimination and Jacobi"):
+                st.json(demos["linear_systems"])
+                st.caption("Both methods solve the same small 2×2 linear system.")
+            with st.expander("3. Numerical integration — Trapezoidal and Simpson 1/3"):
+                st.json(demos["integration"])
+                st.caption("Example integral: ∫₀¹ x² dx = 1/3. Simpson 1/3 uses equally spaced points.")
+            with st.expander("4. Curve fitting — Straight line, Quadratic, Exponential"):
+                st.json(demos["curve_fitting"])
+                st.caption(
+                    "The classifier baseline uses straight-line least squares. "
+                    "Quadratic and exponential fitting are shown as separate syllabus examples."
+                )
+            with st.expander("5. Interpolation — Lagrange, Newton Forward, Newton Backward"):
+                st.json(demos["interpolation"])
+                st.caption(
+                    "The three interpolation methods are evaluated on the same equally spaced sample table."
+                )
+
+            st.markdown("### Numerical baseline setup")
+            setup_cols = st.columns(3)
+            setup_cols[0].metric("Linear solver", "Gaussian Elimination")
+            setup_cols[1].metric("Training features", str(len(report["feature_columns"])))
+            setup_cols[2].metric("Regularization", f"{numerical['training']['regularization']:.1e}")
+            st.write(
+                "- Feature scaling is fitted on Group Train only.\n"
+                "- The model solves regularized normal equations for a straight-line least-squares fit.\n"
+                "- The original Newton Logistic Regression artifact and its evaluation remain separate and unchanged."
+            )
+
+
+# ============================================================
+# PAGE 4 — OPTIMIZATION LAB
 # ============================================================
 
 elif page == "Optimization Lab":
