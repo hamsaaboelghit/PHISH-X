@@ -274,4 +274,24 @@ def method_demos():
         "newton_forward_at_1_5": newton_forward(x, y, 1.5),
         "newton_backward_at_1_5": newton_backward(x, y, 1.5),
     }
-    return {"root_finding": root, "linear_systems": linear, "interpolation": interpolation}
+    integration_x = np.linspace(0.0, 1.0, 5)
+    integration_y = integration_x ** 2
+    integration = {
+        "integral_x_squared_trapezoidal": trapezoidal(integration_x, integration_y),
+        "integral_x_squared_simpson_1_3": simpson_one_third(integration_x, integration_y),
+        "exact_integral": 1.0 / 3.0,
+    }
+    curve_x = np.array([0., 1., 2., 3.])
+    curve_y = np.array([1., 3., 5., 7.])
+    curve_fitting = {
+        "straight_line_coefficients_intercept_slope": fit_straight_line(curve_x, curve_y).tolist(),
+        "quadratic_coefficients_constant_linear_quadratic": fit_quadratic(curve_x, curve_y).tolist(),
+        "exponential_coefficients_a_b_for_a_exp_bx": list(fit_exponential(curve_x, np.exp(0.5 + 0.2 * curve_x))),
+    }
+    return {
+        "root_finding": root,
+        "linear_systems": linear,
+        "integration": integration,
+        "curve_fitting": curve_fitting,
+        "interpolation": interpolation,
+    }
