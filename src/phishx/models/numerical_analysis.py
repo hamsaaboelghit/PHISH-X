@@ -103,7 +103,7 @@ def fixed_point(g, x, tol=1e-10, max_iter=1000):
 
 def trapezoidal(x, y):
     x, y = np.asarray(x, float), np.asarray(y, float)
-    return float(np.trapz(y, x))
+    return float(np.sum((y[1:] + y[:-1]) * np.diff(x) / 2.0))
 
 
 def simpson_one_third(x, y):
@@ -235,7 +235,7 @@ def evaluate_numerical_model(model, X, y):
     points = np.asarray(sorted(points, key=lambda pair: pair[0]))
     fpr = np.maximum.accumulate(points[:, 0])
     tpr = points[:, 1]
-    auc_trap = float(np.trapz(tpr, fpr))
+    auc_trap = float(np.sum((tpr[1:] + tpr[:-1]) * np.diff(fpr) / 2.0))
     grid = np.linspace(0.0, 1.0, 101)
     interp_tpr = np.interp(grid, fpr, tpr)
     auc_simpson = simpson_one_third(grid, interp_tpr)
