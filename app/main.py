@@ -1348,7 +1348,6 @@ elif page == "Numerical Analysis & Comparison":
                 x="Metric",
                 y="Score",
                 color="Model",
-                y_axis="Score",
                 height=320,
             )
 
