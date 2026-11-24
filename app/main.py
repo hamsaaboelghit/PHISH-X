@@ -1422,6 +1422,74 @@ elif page == "Numerical Analysis & Comparison":
                 "that either model will behave identically on future traffic."
             )
 
+            st.markdown("### Mathematical foundations & formulas")
+            st.caption(
+                "The equations below show the mathematical form of each implemented method. "
+                "Symbols are defined beside the formulas so the page can also be used during the viva."
+            )
+
+            with st.expander("A. Least-squares baseline and Gaussian Elimination", expanded=True):
+                st.markdown("**1. Straight-line least-squares model**")
+                st.latex(r"\hat{y}=\beta_0+\beta_1x_1+\cdots+\beta_px_p=X\beta")
+                st.markdown("The coefficients minimize the sum of squared residuals:")
+                st.latex(r"\min_{\beta}\;\|X\beta-y\|_2^2")
+                st.markdown("Setting the derivative to zero gives the normal equations. The implementation adds L2 regularization to feature coefficients (not the intercept):")
+                st.latex(r"(X^TX+\lambda R)\beta=X^Ty")
+                st.latex(r"R=\operatorname{diag}(0,1,\ldots,1)")
+                st.markdown("**2. Gaussian Elimination with partial pivoting**")
+                st.latex(r"[A\mid b]\;\longrightarrow\;\text{upper-triangular system}\;U\beta=c")
+                st.latex(r"\beta_n=\frac{c_n}{u_{nn}},\qquad")
+                st.latex(r"\beta_i=\frac{c_i-\sum_{j=i+1}^{n}u_{ij}\beta_j}{u_{ii}}")
+                st.caption("At each elimination column, partial pivoting swaps in the row with the largest absolute pivot to reduce numerical instability.")
+
+            with st.expander("B. Nonlinear equations — Bisection, Newton, Secant, Fixed Point"):
+                st.markdown("We seek a root of f(x) = 0.")
+                st.markdown("**Bisection:** for an interval with f(a)f(b) < 0:")
+                st.latex(r"c_k=\frac{a_k+b_k}{2}")
+                st.markdown("Keep the half-interval whose endpoints still have opposite signs.")
+                st.markdown("**Newton-Raphson:**")
+                st.latex(r"x_{k+1}=x_k-\frac{f(x_k)}{f'(x_k)}")
+                st.markdown("**Secant:** derivative-free approximation:")
+                st.latex(r"x_{k+1}=x_k-f(x_k)\frac{x_k-x_{k-1}}{f(x_k)-f(x_{k-1})}")
+                st.markdown("**Fixed Point:** rewrite the equation as x = g(x), then iterate:")
+                st.latex(r"x_{k+1}=g(x_k)")
+
+            with st.expander("C. Linear systems — Jacobi iteration"):
+                st.markdown("For A x = b, split A = D + L + U, where D is diagonal:")
+                st.latex(r"x^{(k+1)}=D^{-1}\left(b-(L+U)x^{(k)}\right)")
+                st.markdown("Component form:")
+                st.latex(r"x_i^{(k+1)}=\frac{1}{a_{ii}}\left(b_i-\sum_{j\ne i}a_{ij}x_j^{(k)}\right)")
+                st.caption("Jacobi computes every new component from the previous iteration vector. Convergence is guaranteed under conditions such as strict diagonal dominance.")
+
+            with st.expander("D. Numerical integration — Trapezoidal and Simpson 1/3"):
+                st.markdown("**Composite Trapezoidal Rule** for equally spaced points, h = (b − a)/n:")
+                st.latex(r"\int_a^b f(x)\,dx\approx h\left[\frac{f(x_0)+f(x_n)}{2}+\sum_{i=1}^{n-1}f(x_i)\right]")
+                st.markdown("**Composite Simpson 1/3 Rule** (n must be even):")
+                st.latex(r"\int_a^b f(x)\,dx\approx\frac{h}{3}\left[f(x_0)+f(x_n)+4\sum_{i\;\mathrm{odd}}f(x_i)+2\sum_{i\;\mathrm{even},\;0<i<n}f(x_i)\right]")
+                st.caption("For the demonstration integral, the exact value is ∫₀¹ x² dx = 1/3. Simpson 1/3 integrates this quadratic exactly (up to floating-point rounding).")
+
+            with st.expander("E. Curve fitting — Straight line, Quadratic, Exponential"):
+                st.markdown("**Straight-line fit:**")
+                st.latex(r"y=a+bx")
+                st.markdown("**Quadratic fit:**")
+                st.latex(r"y=a+bx+cx^2")
+                st.markdown("Both polynomial fits choose coefficients by minimizing Σ(yᵢ − ŷᵢ)².")
+                st.markdown("**Exponential fit:** y = a e^(bx). Taking natural logarithms gives a linear least-squares problem:")
+                st.latex(r"\ln y=\ln a+bx,\qquad a=e^{\alpha}")
+                st.caption("The exponential fitting implementation requires positive y values because it applies the natural logarithm.")
+
+            with st.expander("F. Interpolation — Lagrange and Newton forms"):
+                st.markdown("**Lagrange interpolation polynomial:**")
+                st.latex(r"P(x)=\sum_{i=0}^{n}y_i\,L_i(x)")
+                st.latex(r"L_i(x)=\prod_{\substack{j=0\\j\ne i}}^{n}\frac{x-x_j}{x_i-x_j}")
+                st.markdown("**Newton divided-difference form:**")
+                st.latex(r"P(x)=f[x_0]+f[x_0,x_1](x-x_0)+\cdots+f[x_0,\ldots,x_n]\prod_{j=0}^{n-1}(x-x_j)")
+                st.markdown("**Newton forward form** (equally spaced nodes, u = (x − x₀)/h):")
+                st.latex(r"P(x)=y_0+u\Delta y_0+\frac{u(u-1)}{2!}\Delta^2y_0+\cdots")
+                st.markdown("**Newton backward form** (u = (x − xₙ)/h):")
+                st.latex(r"P(x)=y_n+u\nabla y_n+\frac{u(u+1)}{2!}\nabla^2y_n+\cdots")
+                st.caption("Lagrange and divided differences allow distinct nodes; the forward and backward difference formulas used here require equally spaced x values.")
+
             st.markdown("### Syllabus methods — worked demonstrations")
             st.caption(
                 "These are small, transparent method demonstrations. They are separate from "
