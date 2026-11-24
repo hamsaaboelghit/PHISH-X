@@ -18,8 +18,10 @@ def gaussian_elimination(A, b):
     A = np.asarray(A, dtype=float).copy()
     b = np.asarray(b, dtype=float).reshape(-1).copy()
     n = len(b)
-    if A.shape != (n, n):
-        raise ValueError("A must be square and match b.")
+    if A.ndim != 2 or A.shape != (n, n) or n == 0:
+        raise ValueError("A must be a non-empty square matrix matching b.")
+    if not np.isfinite(A).all() or not np.isfinite(b).all():
+        raise ValueError("A and b must contain only finite values.")
     M = np.column_stack((A, b))
     for k in range(n):
         pivot = k + int(np.argmax(np.abs(M[k:, k])))
@@ -36,7 +38,11 @@ def gaussian_elimination(A, b):
 
 
 def jacobi(A, b, tol=1e-10, max_iter=10000):
-    A, b = np.asarray(A, float), np.asarray(b, float)
+    A, b = np.asarray(A, float), np.asarray(b, float).reshape(-1)
+    if A.ndim != 2 or A.shape != (len(b), len(b)) or len(b) == 0:
+        raise ValueError("A must be square and match the dimensions of b.")
+    if not np.isfinite(A).all() or not np.isfinite(b).all():
+        raise ValueError("A and b must contain only finite values.")
     if np.any(np.abs(np.diag(A)) < 1e-12):
         raise ValueError("Jacobi requires non-zero diagonal entries.")
     D = np.diag(A)
@@ -52,16 +58,24 @@ def jacobi(A, b, tol=1e-10, max_iter=10000):
 
 def bisection(f: Callable, a, b, tol=1e-10, max_iter=200):
     a, b = float(a), float(b)
-    if f(a) * f(b) > 0:
+    fa, fb = float(f(a)), float(f(b))
+    if not np.isfinite([fa, fb]).all():
+        raise ValueError("Function values at the interval endpoints must be finite.")
+    if abs(fa) < tol:
+        return a, 0
+    if abs(fb) < tol:
+        return b, 0
+    if fa * fb > 0:
         raise ValueError("The interval must bracket a root.")
     for i in range(1, max_iter + 1):
         c = (a + b) / 2
         if abs(f(c)) < tol or (b - a) / 2 < tol:
             return c, i
-        if f(a) * f(c) < 0:
-            b = c
+        fc = float(f(c))
+        if fa * fc < 0:
+            b, fb = c, fc
         else:
-            a = c
+            a, fa = c, fc
     return (a + b) / 2, max_iter
 
 
@@ -108,6 +122,10 @@ def trapezoidal(x, y):
 
 def simpson_one_third(x, y):
     x, y = np.asarray(x, float), np.asarray(y, float)
+    if x.ndim != 1 or y.ndim != 1 or len(x) != len(y):
+        raise ValueError("x and y must be one-dimensional arrays of equal length.")
+    if not np.isfinite(x).all() or not np.isfinite(y).all():
+        raise ValueError("x and y must contain only finite values.")
     if len(x) < 3 or len(x) % 2 == 0:
         raise ValueError("Simpson 1/3 requires an odd number of equally spaced points.")
     h = np.diff(x)
@@ -136,6 +154,10 @@ def fit_exponential(x, y):
 
 def lagrange_interpolate(x, y, target):
     x, y = np.asarray(x, float), np.asarray(y, float)
+    if x.ndim != 1 or y.ndim != 1 or len(x) != len(y) or len(x) == 0:
+        raise ValueError("x and y must be non-empty one-dimensional arrays of equal length.")
+    if len(np.unique(x)) != len(x):
+        raise ValueError("Interpolation x values must be distinct.")
     total = 0.0
     for i in range(len(x)):
         basis = 1.0
@@ -148,6 +170,10 @@ def lagrange_interpolate(x, y, target):
 
 def divided_differences(x, y):
     x, work = np.asarray(x, float), np.asarray(y, float).copy()
+    if x.ndim != 1 or work.ndim != 1 or len(x) != len(work) or len(x) == 0:
+        raise ValueError("x and y must be non-empty one-dimensional arrays of equal length.")
+    if len(np.unique(x)) != len(x):
+        raise ValueError("Divided differences require distinct x values.")
     coefficients = [float(work[0])]
     for order in range(1, len(x)):
         work = (work[1:] - work[:-1]) / (x[order:] - x[:-order])
@@ -156,6 +182,8 @@ def divided_differences(x, y):
 
 
 def newton_divided_eval(x, coefficients, target):
+    if len(x) != len(coefficients) or len(coefficients) == 0:
+        raise ValueError("x and coefficients must have the same non-zero length.")
     value = coefficients[-1]
     for i in range(len(coefficients) - 2, -1, -1):
         value = coefficients[i] + (target - x[i]) * value
@@ -224,21 +252,28 @@ def evaluate_numerical_model(model, X, y):
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     accuracy = (tp + tn) / len(truth) if len(truth) else 0.0
 
-    # ROC points from unique score thresholds; sort by FPR before integration.
-    thresholds = np.r_[np.inf, np.sort(np.unique(scores))[::-1], -np.inf]
-    positives, negatives = max(int(truth.sum()), 1), max(int((~truth).sum()), 1)
-    points = []
-    for threshold in thresholds:
-        selected = scores >= threshold
-        points.append((np.sum(selected & ~truth) / negatives,
-                       np.sum(selected & truth) / positives))
-    points = np.asarray(sorted(points, key=lambda pair: pair[0]))
-    fpr = np.maximum.accumulate(points[:, 0])
-    tpr = points[:, 1]
-    auc_trap = float(np.sum((tpr[1:] + tpr[:-1]) * np.diff(fpr) / 2.0))
-    grid = np.linspace(0.0, 1.0, 101)
-    interp_tpr = np.interp(grid, fpr, tpr)
-    auc_simpson = simpson_one_third(grid, interp_tpr)
+    # Build a monotone ROC curve. For repeated FPR values retain the highest TPR,
+    # then integrate the resulting upper envelope.
+    positives, negatives = int(truth.sum()), int((~truth).sum())
+    if positives and negatives:
+        thresholds = np.r_[np.inf, np.sort(np.unique(scores))[::-1], -np.inf]
+        points = []
+        for threshold in thresholds:
+            selected = scores >= threshold
+            points.append((np.sum(selected & ~truth) / negatives,
+                           np.sum(selected & truth) / positives))
+        points = np.asarray(points, dtype=float)
+        fpr = np.unique(points[:, 0])
+        tpr = np.asarray([points[points[:, 0] == value, 1].max() for value in fpr])
+        tpr = np.maximum.accumulate(tpr)
+        auc_trap = float(np.sum((tpr[1:] + tpr[:-1]) * np.diff(fpr) / 2.0))
+        grid = np.linspace(0.0, 1.0, 101)
+        interp_tpr = np.interp(grid, fpr, tpr)
+        auc_simpson = simpson_one_third(grid, interp_tpr)
+    else:
+        # ROC AUC is undefined when the evaluation data contains only one class.
+        auc_trap = float("nan")
+        auc_simpson = float("nan")
     return {
         "accuracy": float(accuracy),
         "phishing_precision": float(precision),
