@@ -326,26 +326,17 @@ python -c "from phishx.inference import load_model_artifact, predict_url; m=load
 
 ## 10. Validation and Test Evidence
 
-The integrated code was tested locally on **14 November 2026**. The full test command was:
+The project has a recorded GitHub Actions verification for commit `d64091dc4a0e3e0059fb419a43a123c9b25804f3`. The workflow matrix completed successfully for Python **3.10, 3.11, 3.12, and 3.13**. On Python 3.12, the test output was:
 
-```bash
-python -m pytest tests -q
+```text
+340 passed, 1 skipped, 190 subtests passed in 5.66s
 ```
 
-The recorded run completed with:
+The same workflow completed the Python compile check for `app`, `src`, and `tests`. This run includes direct tests for the classical numerical methods and least-squares baseline. Later documentation and dashboard-only commits followed this verified test commit; check the repository Actions page for the status of the latest `main` commit before treating the final snapshot as fully CI-verified.
 
-| Test result | Count |
-|---|---:|
-| Passed | **324** |
-| Skipped | **1** |
-| Passed subtests | **190** |
-| Runtime | **18.28 seconds** |
+The current local training run was also executed successfully and generated the Newton model artifact and `training_metrics.json`. It reported both Newton Logistic Regression and the separate Gauss + Least-Squares baseline on the same 19,337-sample Group Test split. The metrics in this report are the values from that training output, not estimates.
 
-GitHub Actions completed successfully for the supported Python versions **3.10, 3.11, 3.12, and 3.13** on the latest code validation cycle.
-
-Additional integration checks confirmed that the saved Newton model artifact could be loaded and used for a URL prediction, returning class probabilities, five model features, and a structural security-assessment status. The Streamlit application was also launched successfully in the local environment.
-
-The README-only documentation commit `17cb145` followed the code validation. The test count above refers to the recorded local test run; the documentation-only change did not modify application code. These checks do not represent a new model-training run or a fresh recalculation of the held-out metrics.
+Earlier artifact-backed inference and Streamlit AppTest checks are retained as historical integration evidence. They do not establish that every later dashboard refinement has been manually inspected in a browser.
 
 ## 11. Limitations and Responsible Use
 
