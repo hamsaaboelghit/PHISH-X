@@ -1429,7 +1429,7 @@ elif page == "Numerical Analysis & Comparison":
             )
 
             with st.expander("A. The original Newton Logistic Regression model", expanded=True):
-                st.markdown("The primary classifier maps the feature vector x to a phishing score using the logistic sigmoid:")
+                st.markdown("The primary classifier maps the feature vector x to a legitimate-class score using the logistic sigmoid:")
                 st.latex(r"z=\theta^T x,\qquad \sigma(z)=\frac{1}{1+e^{-z}}")
                 st.latex(r"\hat{p}=\sigma(\theta^T x)")
                 st.markdown("For binary labels y ∈ {0, 1}, Binary Cross-Entropy (BCE) is:")
