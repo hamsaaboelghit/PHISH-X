@@ -9,7 +9,7 @@
 
 ## Abstract
 
-PHISH-X is a software-only, explainable phishing-URL analysis workbench. It combines a manually implemented Logistic Regression training pipeline with numerical optimization, URL feature analysis, additive model-score explanations, and an independent structural security assessment. The application is delivered through a Streamlit interface intended to support analyst investigation and educational demonstration.
+PHISH-X is a software-only, explainable phishing-URL analysis workbench. It combines a manually implemented Newton Logistic Regression classifier with a separate classical least-squares baseline solved using Gaussian Elimination, URL feature analysis, additive model-score explanations, and an independent structural security assessment. Its Streamlit interface also demonstrates the course methods for root finding, linear systems, numerical integration, curve fitting, and interpolation.
 
 The system analyzes the submitted URL string locally. It does not visit the destination, send HTTP requests, perform DNS lookups, or query external reputation services. Its output is therefore a model-based assessment of URL characteristics, not a live verification of the website.
 
@@ -17,14 +17,14 @@ The system analyzes the submitted URL string locally. It does not visit the dest
 
 Phishing URLs can imitate legitimate services through their length, character composition, domain structure, and path patterns. A binary prediction alone gives an analyst limited insight into why a URL was flagged. PHISH-X addresses this by presenting class probabilities, feature-level contributions to the model score, and separate structural advisories.
 
-The project also demonstrates numerical-computation concepts in a complete machine-learning workflow. Rather than relying on a library estimator to fit Logistic Regression, the project implements the objective function, analytical derivatives, Gradient Descent, Newton-Raphson optimization, and a linear-system solver.
+The project also demonstrates numerical-computation concepts in a complete machine-learning workflow. Rather than relying on a library estimator to fit Logistic Regression, the project implements the objective function, analytical derivatives, Gradient Descent, Newton-Raphson optimization, and a linear-system solver. A separate syllabus-level least-squares model provides a transparent comparison using the same held-out host-grouped test set.
 
 ## 2. Project Objectives
 
 The project aims to:
 
 1. Build a Logistic Regression classifier for phishing-URL classification.
-2. Implement the core optimization and numerical linear-algebra methods directly from their mathematical formulations.
+2. Implement the core optimization and numerical linear-algebra methods directly from their mathematical formulations, alongside classical syllabus methods.
 3. Use a host-grouped train/test evaluation protocol to reduce host overlap between partitions.
 4. Keep preprocessing consistent across training, evaluation, and inference.
 5. Explain the model score using additive feature contributions.
@@ -42,7 +42,7 @@ The project aims to:
 5. **Classification:** the application presents the predicted class and both class probabilities using the configured decision threshold.
 6. **Explanation:** the weighted feature contributions are displayed in log-odds space.
 7. **Structural inspection:** independent URL checks generate security advisories. These checks do not silently alter the ML feature vector or prediction.
-8. **Presentation:** Streamlit pages expose investigation, dataset, evaluation, optimization, simulation, and uncertainty-analysis capabilities.
+8. **Presentation:** Streamlit pages expose investigation, dataset, evaluation, classical numerical-method comparison, optimization, simulation, and uncertainty-analysis capabilities.
 
 ### 3.2 Model input contract
 
