@@ -52,13 +52,12 @@ Show the Hessian-based Newton system, damping, backtracking line search, and Gau
 - Structural advisories are a separate, rule-based channel.
 
 ### Slide 9 — Results and limitations
-- Accuracy: 98.08%.
-- Phishing precision: 98.91%.
-- Phishing recall: 97.90%.
-- Phishing F1: 98.41%.
-- Test size: 19,337.
-- Show the confusion matrix and discuss the 246 phishing false negatives.
-- Mention dataset shortcuts/bias and that the score is not a guarantee for future campaigns.
+- Primary Newton Logistic Regression: 98.08% accuracy, 98.91% phishing precision, 97.90% phishing recall, and 98.41% phishing F1.
+- Classical Gauss + Least-Squares baseline: 94.26% accuracy, 99.73% phishing precision, 90.78% phishing recall, and 95.05% phishing F1.
+- Both models use the same 19,337-sample Group Test split.
+- Explain the trade-off: the baseline makes fewer false phishing alarms but misses more phishing samples.
+- Show both confusion matrices and mention that the primary model missed 246 phishing samples.
+- Mention dataset shortcuts/bias and that neither result guarantees future performance.
 
 ### Slide 10 — Conclusion and future work
 - Demonstrated numerical optimization from equations to a working classifier.
@@ -76,7 +75,8 @@ Show the Hessian-based Newton system, damping, backtracking line search, and Gau
 6. Show the independent structural assessment using a URL containing misleading user-info, for example `http://paypal.com@evil.test/login`. Explain that the actual destination host is the part after `@`; this is a parser/advisory demonstration, not a claim that the URL was visited.
 7. Open **Optimization Lab** and run the comparison. Point to the measured loss, iteration count, runtime, and convergence history for each method.
 8. Open **Model Evaluation**. Show both class-specific metric groups and the confusion matrix. Stress that phishing recall is important.
-9. End with the limitations: host-separated dataset evaluation, lexical features, no external reputation lookups, and no guarantee of safety.
+9. Open **Numerical Analysis & Comparison**. Show the side-by-side metrics, the two phishing-positive confusion matrices, the visual comparison chart, ROC AUC calculations, and the five syllabus-method demonstrations. Explain that the least-squares output is a clipped score, not a calibrated probability.
+10. End with the limitations: host-separated dataset evaluation, lexical features, no external reputation lookups, and no guarantee of safety.
 
 If the local model artifact is missing, run `python src/phishx/models/train.py` first. Do not spend presentation time debugging a fresh environment; generate and verify the artifact before the demo.
 
@@ -146,7 +146,16 @@ No. HTTPS protects transport to a domain; phishing sites can also use HTTPS. It 
 **Q17. Does a direct IP address always mean phishing?**  
 No. It can be legitimate, especially in private networks. PHISH-X reports it as a low-severity advisory, not proof of maliciousness.
 
-**Q18. What are the main limitations?**  
+**Q19. Why does the least-squares baseline have higher precision but lower recall?**  
+At the selected 0.5 threshold on this held-out split, it is more conservative when predicting phishing. It raises fewer false alarms, but it also misses more actual phishing samples. This is a threshold- and dataset-specific trade-off.
+
+**Q20. Is the least-squares output a probability?**  
+No. It is a clipped numerical score between 0 and 1. It has not been calibrated, so it must not be presented as a probability estimate.
+
+**Q21. Why show both Trapezoidal and Simpson 1/3 for ROC AUC?**  
+The trapezoidal rule integrates the empirical ROC points directly. Simpson 1/3 is demonstrated after interpolating the ROC curve onto an evenly spaced grid, so it is a numerical approximation and can differ slightly.
+
+**Q22. What are the main limitations?**  
 The dataset has collection biases and lexical shortcuts; only five lexical features feed the model; there is no live reputation, DNS, WHOIS, page-content, or browser analysis; and the evaluation is one fixed group-separated test split.
 
 ## 5. Claims to avoid during the presentation
@@ -167,8 +176,8 @@ The dataset has collection biases and lexical shortcuts; only five lexical featu
 - [ ] Review `docs/DATASET_VALIDATION_REPORT.md` for dataset counts, split isolation, feature parity, and documented discrepancies.
 - [ ] Run `python -m pytest -q` and keep the terminal result.
 - [ ] Run `python src/phishx/models/train.py` and confirm both artifact and metrics paths.
-- [ ] Launch Streamlit and verify URL Investigation, Dataset Intelligence, Optimization Lab, Model Evaluation, Threat Simulation Lab, and Confidence & Uncertainty Lab.
-- [ ] Manually inspect each of the six workbench views in the browser.
-- [ ] Prepare screenshots of the six views and one training/evaluation result.
+- [ ] Launch Streamlit and verify URL Investigation, Dataset Intelligence, Model Evaluation, Numerical Analysis & Comparison, Optimization Lab, Threat Simulation Lab, and Confidence & Uncertainty Lab.
+- [ ] Manually inspect all seven workbench views in the browser, including both confusion matrices and the comparison chart.
+- [ ] Prepare screenshots of the seven views and one training/evaluation result.
 - [ ] Record the short live demo and verify that the saved video plays back with readable text and no private/local-only information.
 - [ ] Keep the final report and this guide available during the presentation.
