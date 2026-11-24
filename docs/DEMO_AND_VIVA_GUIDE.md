@@ -176,8 +176,8 @@ The dataset has collection biases and lexical shortcuts; only five lexical featu
 - [ ] Review `docs/DATASET_VALIDATION_REPORT.md` for dataset counts, split isolation, feature parity, and documented discrepancies.
 - [ ] Run `python -m pytest -q` and keep the terminal result.
 - [ ] Run `python src/phishx/models/train.py` and confirm both artifact and metrics paths.
-- [ ] Launch Streamlit and verify URL Investigation, Dataset Intelligence, Model Evaluation, Numerical Analysis & Comparison, Optimization Lab, Threat Simulation Lab, and Confidence & Uncertainty Lab.
-- [ ] Manually inspect all seven workbench views in the browser, including both confusion matrices and the comparison chart.
-- [ ] Prepare screenshots of the seven views and one training/evaluation result.
+- [ ] Launch Streamlit and verify Overview, Dataset Intelligence, Model Evaluation, Numerical Analysis & Comparison, Optimization Lab, URL Investigation, Threat Simulation Lab, and Confidence & Uncertainty Lab.
+- [ ] Manually inspect all eight workbench views in the browser, including both confusion matrices and the comparison chart.
+- [ ] Prepare screenshots of the eight views and one training/evaluation result.
 - [ ] Record the short live demo and verify that the saved video plays back with readable text and no private/local-only information.
 - [ ] Keep the final report and this guide available during the presentation.
