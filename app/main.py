@@ -1413,7 +1413,7 @@ elif page == "Numerical Analysis & Comparison":
             newton_metrics = comparison["newton_logistic_regression"]
             least_squares_metrics = comparison["gauss_least_squares_baseline"]
             st.info(
-                f"Newton Logistic Regression reaches {newton_metrics['phishing_recall']:.2%} "
+                f"Newton Logistic Regression reaches {newton_metrics['recall']:.2%} "
                 f"phishing recall, while the least-squares baseline reaches "
                 f"{least_squares_metrics['precision']:.2%} phishing precision. "
                 "The baseline is more conservative at the selected 0.5 threshold: "
