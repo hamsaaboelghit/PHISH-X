@@ -5,7 +5,7 @@
 PHISH-X combines three complementary layers:
 
 1. **Machine Learning:** a manually implemented Logistic Regression classifier.
-2. **Numerical Computations:** standardization, Batch Gradient Descent, Newton-Raphson optimization, Hessian construction, and Gaussian Elimination with Partial Pivoting.
+2. **Numerical Computations:** standardization, Batch Gradient Descent, Newton-Raphson optimization, Gaussian Elimination with Partial Pivoting, Jacobi, classical root-finding, numerical integration, curve fitting, and interpolation.
 3. **Cybersecurity Analysis:** independent URL-structure advisories that add context without silently changing the ML prediction.
 
 > **Privacy and scope:** URL analysis is performed locally on the supplied string. PHISH-X does not open the submitted URL, send HTTP requests, perform DNS lookups, or check live domain reputation.
@@ -27,6 +27,7 @@ PHISH-X combines three complementary layers:
 | **Overview** | Project and dataset intelligence at a glance. |
 | **Dataset Intelligence** | Dataset composition, quality checks, and analytical readiness. |
 | **Model Evaluation** | Held-out evaluation metrics and class-specific performance. |
+| **Numerical Analysis & Comparison** | Compare the original Newton Logistic Regression with a separate Gauss-solved least-squares baseline on the identical held-out Group Test set; inspect syllabus-method demonstrations. |
 | **Optimization Lab** | Compare Gradient Descent and Newton-Raphson convergence and runtime. |
 | **URL Investigation** | Analyze a URL, inspect its prediction, probabilities, features, and explanation. |
 | **Threat Simulation Lab** | Compare controlled lexical and structural URL variations. |
@@ -166,6 +167,39 @@ The Optimization Lab runs the implemented Batch Gradient Descent and Newton-Raph
 Implementation: `src/phishx/models/logistic_regression.py` and `src/phishx/data/preprocessing.py`.
 
 **Scope clarification:** `docs/tld_popularity_ablation.json` is a separate historical 16-feature audit experiment using scikit-learn Logistic Regression. It is not the deployed five-feature PHISH-X model and is not the source of the current application's performance metrics.
+
+## Classical Numerical Analysis baseline
+
+To make the course-syllabus methods visible without replacing the original ML model, PHISH-X trains a second, deliberately simple numerical baseline:
+
+- A straight-line least-squares model is fitted to the same five URL features.
+- Its regularized normal equations are solved by the project's Gaussian Elimination implementation with partial pivoting.
+- Feature scaling is fitted on Group Train only.
+- It is evaluated on the exact same held-out Group Test partition as Newton Logistic Regression.
+- Its clipped output is a numerical score in [0, 1], **not a calibrated probability**.
+
+The current local training run recorded the following results on 19,337 held-out URLs:
+
+| Metric | Newton Logistic Regression | Gauss + Least Squares |
+|---|---:|---:|
+| Accuracy | 98.08% | 94.26% |
+| Phishing precision | 98.91% | 99.73% |
+| Phishing recall | 97.90% | 90.78% |
+| Phishing F1-score | 98.41% | 95.05% |
+
+The baseline has higher phishing precision but lower phishing recall on this split: it raises fewer false phishing alarms while missing more phishing samples. These are dataset-specific results, not guaranteed future performance.
+
+The Numerical Analysis & Comparison page also demonstrates:
+
+- **Nonlinear equations:** Bisection, Newton, Secant, and Fixed Point.
+- **Linear systems:** Gaussian Elimination and Jacobi.
+- **Integration:** Trapezoidal and Simpson 1/3.
+- **Curve fitting:** straight-line, quadratic, and exponential.
+- **Interpolation:** Lagrange, Newton divided differences, Newton forward, and Newton backward.
+
+The method demonstrations use small transparent examples. They are separate educational demonstrations; they are not all components of the deployed URL classifier.
+
+Implementation: `src/phishx/models/numerical_analysis.py`. Direct unit tests: `tests/test_numerical_analysis.py`.
 
 ## Training and evaluation design
 
