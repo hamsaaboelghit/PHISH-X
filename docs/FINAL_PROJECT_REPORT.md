@@ -65,6 +65,7 @@ The prediction path is local. PHISH-X does not visit submitted URLs, perform DNS
 - **Optimization Lab:** runs the hand-implemented Batch Gradient Descent and Newton-Raphson methods on the same deterministic, class-balanced sample and compares loss, iterations, runtime, and convergence histories.
 - **Dataset Intelligence:** exposes dataset and feature information available in the application.
 - **Model Evaluation:** displays held-out sample count, accuracy, threshold, training iterations, class-specific precision/recall/F1, confusion matrix, and evaluation configuration.
+- **Numerical Analysis & Comparison:** compares the primary Newton Logistic Regression with a separate least-squares baseline solved by Gaussian Elimination on the identical Group Test split. It also presents both confusion matrices, a metric chart, ROC integration values, and worked syllabus-method demonstrations.
 - **Threat Simulation Lab:** compares the saved model's scores and five model-feature values across controlled, locally generated URL variations. This is a limited sensitivity experiment, not a full adversarial-robustness benchmark.
 - **Confidence & Uncertainty Lab:** displays class scores, threshold distance, and binary entropy as score-based uncertainty indicators. These values are not calibrated confidence estimates.
 
@@ -206,7 +207,25 @@ The Newton linear system is solved with a hand-implemented Gaussian Elimination 
 
 The production Newton path does not delegate this solve to `numpy.linalg.solve` or `numpy.linalg.pinv`. NumPy is used for array storage and vectorized arithmetic; the central optimization and linear-system algorithms are explicit project implementations.
 
-### 5.7 Numerical verification
+### 5.7 Classical numerical analysis baseline
+
+The original Newton Logistic Regression remains the primary classifier. A separate syllabus-level baseline was added so that the course's classical numerical methods are visible in both the source code and the application.
+
+The baseline fits a straight-line least-squares model to the same five URL features. It solves the regularized normal equations using Gaussian Elimination with partial pivoting. Its feature scaler is fitted on Group Train only, then reused on Group Test. The output is clipped to [0, 1] and is explicitly a **numerical score, not a calibrated probability**.
+
+The numerical-method module also contains independently testable implementations of:
+
+| Course topic | Implemented methods |
+|---|---|
+| Nonlinear equations | Bisection, Newton root, Secant, Fixed Point |
+| Linear systems | Gaussian Elimination with partial pivoting, Jacobi |
+| Integration | Trapezoidal, Simpson 1/3 |
+| Curve fitting | Straight-line, quadratic, exponential |
+| Interpolation | Lagrange, Newton divided differences, Newton forward, Newton backward |
+
+These are small transparent demonstrations. The curve-fitting and interpolation examples are not additional URL-classifier inputs.
+
+### 5.8 Numerical verification
 
 The test suite includes finite-difference checks of analytical derivatives, Hessian symmetry/positive-semidefinite checks, linear-solver tests, rank-deficient feature cases, and comparisons of the two optimization methods on a shared regularized objective.
 
@@ -263,6 +282,21 @@ The positive class in the stored binary report is Legitimate (label 1). To avoid
 
 Thus, 246 phishing URLs were classified as legitimate in this held-out split, while 126 legitimate URLs were classified as phishing. For a security detector, phishing recall is particularly important because it measures the proportion of phishing samples correctly caught.
 
+### Comparison with the classical least-squares baseline
+
+Both models were trained on the same Group Train partition and evaluated on the same **19,337-sample Group Test** partition. The current training output reports:
+
+| Metric | Newton Logistic Regression | Gauss + Least Squares |
+|---|---:|---:|
+| Accuracy | 98.08% | 94.26% |
+| Phishing precision | 98.91% | 99.73% |
+| Phishing recall | 97.90% | 90.78% |
+| Phishing F1-score | 98.41% | 95.05% |
+
+The least-squares baseline has a higher phishing precision but lower phishing recall on this split. Its phishing-positive confusion matrix is TP = 10,646, FN = 1,081, FP = 29, TN = 7,581. The primary Newton model has TP = 11,481, FN = 246, FP = 126, TN = 7,484. Thus, at the 0.5 threshold, the baseline raises fewer false phishing alarms but misses more phishing samples.
+
+The baseline ROC AUC is approximately 0.9873 using direct trapezoidal integration. Simpson 1/3 gives approximately 0.9859 after interpolation to an evenly spaced grid; it is a numerical approximation. Neither score should be interpreted as a calibration result.
+
 ### Loss convergence
 
 The reported Newton loss decreased from 0.693147 to 0.061183 over 10 accepted iterations. The saved JSON report contains the complete loss history and class-specific metrics.
@@ -302,7 +336,7 @@ The layer reports a severity label and actual parsed destination host when avail
 
 ## 11. Testing and verification
 
-The project team reported this local full-suite result after the current model, evaluation, and UI changes:
+The project team previously reported this local full-suite result after the model, evaluation, and UI changes:
 
 ```text
 319 passed, 1 skipped, 190 subtests passed
@@ -313,7 +347,7 @@ The team also ran the training CLI and confirmed that it generated the Joblib ar
 - `EXCEPTIONS: []`
 - All 14 expected metric/configuration labels were present.
 
-This is an automated Streamlit runtime test, not a claim of manual visual inspection in a browser. The latest delivery-time GitHub Actions run for commit `f238f2b77c17f6a3c7aeed12fbfd052820b70e09` completed successfully on 14 November 2026. The local full-suite rerun on 14 November 2026 also completed with 319 passed, 1 skipped, and 190 subtests passed.
+This is an automated Streamlit runtime test, not a claim of manual visual inspection in a browser. A later GitHub Actions run for commit `d64091dc4a0e3e0059fb419a43a123c9b25804f3` completed successfully across Python 3.10, 3.11, 3.12, and 3.13, with 340 passed, 1 skipped, and 190 subtests passed on Python 3.12. That run includes direct tests for the classical numerical-analysis functions and baseline model. Check the Actions page for a run matching the latest `main` commit before claiming that every subsequent dashboard/documentation edit has been CI-verified.
 
 ## 12. Reproduction and launch
 
