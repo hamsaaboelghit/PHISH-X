@@ -1336,6 +1336,59 @@ elif page == "Numerical Analysis & Comparison":
                 hide_index=True,
             )
 
+            chart_frame = comparison_frame.melt(
+                id_vars="Model",
+                value_vars=["Accuracy", "Phishing Precision", "Phishing Recall", "Phishing F1"],
+                var_name="Metric",
+                value_name="Score",
+            )
+            st.markdown("### Visual performance comparison")
+            st.bar_chart(
+                chart_frame,
+                x="Metric",
+                y="Score",
+                color="Model",
+                y_axis="Score",
+                height=320,
+            )
+
+            st.markdown("### Confusion matrices — phishing-positive view")
+            original_cm = report["evaluation"]["confusion_matrix"]
+            original_phishing_cm = {
+                "tp": original_cm["true_negative"],
+                "fn": original_cm["false_positive"],
+                "fp": original_cm["false_negative"],
+                "tn": original_cm["true_positive"],
+            }
+            numerical_cm = numerical_eval["confusion_matrix"]
+            cm_left, cm_right = st.columns(2)
+            with cm_left:
+                st.markdown("**Newton Logistic Regression**")
+                st.dataframe(
+                    pd.DataFrame(
+                        [
+                            [original_phishing_cm["tp"], original_phishing_cm["fn"]],
+                            [original_phishing_cm["fp"], original_phishing_cm["tn"]],
+                        ],
+                        index=["Actual Phishing", "Actual Legitimate"],
+                        columns=["Predicted Phishing", "Predicted Legitimate"],
+                    ),
+                    width="stretch",
+                )
+            with cm_right:
+                st.markdown("**Gauss + Least Squares**")
+                st.dataframe(
+                    pd.DataFrame(
+                        [
+                            [numerical_cm["tp"], numerical_cm["fn"]],
+                            [numerical_cm["fp"], numerical_cm["tn"]],
+                        ],
+                        index=["Actual Phishing", "Actual Legitimate"],
+                        columns=["Predicted Phishing", "Predicted Legitimate"],
+                    ),
+                    width="stretch",
+                )
+
             st.markdown("### Numerical baseline results")
             score_cols = st.columns(4)
             score_cols[0].metric("Accuracy", f"{numerical_eval['accuracy']:.2%}")
@@ -1354,6 +1407,28 @@ elif page == "Numerical Analysis & Comparison":
             st.caption(
                 "The least-squares model outputs a clipped score from 0 to 1. "
                 "It is not a calibrated probability and is used only as a simple comparison baseline."
+            )
+            auc_cols = st.columns(3)
+            auc_cols[0].metric("ROC AUC — Trapezoidal", f"{numerical_eval['roc_auc_trapezoidal']:.4f}")
+            auc_cols[1].metric("ROC AUC — Simpson 1/3", f"{numerical_eval['roc_auc_simpson_1_3']:.4f}")
+            auc_cols[2].metric("Baseline inference time", f"{numerical_eval['inference_seconds'] * 1000:.3f} ms")
+            st.caption(
+                "Simpson's ROC AUC is a numerical approximation obtained after interpolating "
+                "the ROC curve onto an evenly spaced grid; the trapezoidal value integrates "
+                "the empirical ROC points directly."
+            )
+
+            st.markdown("### What the comparison tells us")
+            newton_metrics = comparison["newton_logistic_regression"]
+            least_squares_metrics = comparison["gauss_least_squares_baseline"]
+            st.info(
+                f"Newton Logistic Regression reaches {newton_metrics['phishing_recall']:.2%} "
+                f"phishing recall, while the least-squares baseline reaches "
+                f"{least_squares_metrics['precision']:.2%} phishing precision. "
+                "The baseline is more conservative at the selected 0.5 threshold: "
+                "it produces fewer false alarms but misses more phishing samples. "
+                "This is a measured trade-off on this held-out dataset, not a claim "
+                "that either model will behave identically on future traffic."
             )
 
             st.markdown("### Syllabus methods — worked demonstrations")
