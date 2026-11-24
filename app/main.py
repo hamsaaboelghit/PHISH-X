@@ -1395,14 +1395,6 @@ elif page == "Numerical Analysis & Comparison":
             score_cols[2].metric("Phishing Recall", f"{numerical_eval['phishing_recall']:.2%}")
             score_cols[3].metric("Phishing F1", f"{numerical_eval['phishing_f1']:.2%}")
 
-            cm = numerical_eval["confusion_matrix"]
-            cm_frame = pd.DataFrame(
-                [[cm["tp"], cm["fn"]], [cm["fp"], cm["tn"]]],
-                index=["Actual Phishing", "Actual Legitimate"],
-                columns=["Predicted Phishing", "Predicted Legitimate"],
-            )
-            st.markdown("**Numerical baseline confusion matrix**")
-            st.dataframe(cm_frame, width="stretch")
             st.caption(
                 "The least-squares model outputs a clipped score from 0 to 1. "
                 "It is not a calibrated probability and is used only as a simple comparison baseline."
