@@ -1428,7 +1428,17 @@ elif page == "Numerical Analysis & Comparison":
                 "Symbols are defined beside the formulas so the page can also be used during the viva."
             )
 
-            with st.expander("A. Least-squares baseline and Gaussian Elimination", expanded=True):
+            with st.expander("A. The original Newton Logistic Regression model", expanded=True):
+                st.markdown("The primary classifier maps the feature vector x to a phishing score using the logistic sigmoid:")
+                st.latex(r"z=\theta^T x,\qquad \sigma(z)=\frac{1}{1+e^{-z}}")
+                st.latex(r"\hat{p}=\sigma(\theta^T x)")
+                st.markdown("For binary labels y ∈ {0, 1}, Binary Cross-Entropy (BCE) is:")
+                st.latex(r"J(\theta)=-\frac{1}{m}\sum_{i=1}^{m}\left[y_i\ln(\hat{p}_i)+(1-y_i)\ln(1-\hat{p}_i)\right]")
+                st.markdown("Newton-Raphson updates the parameter vector using the gradient and Hessian:")
+                st.latex(r"\theta_{k+1}=\theta_k-H(\theta_k)^{-1}\nabla J(\theta_k)")
+                st.caption("This is the existing primary ML model. It remains separate from the classical least-squares baseline below.")
+
+            with st.expander("B. Least-squares baseline and Gaussian Elimination", expanded=True):
                 st.markdown("**1. Straight-line least-squares model**")
                 st.latex(r"\hat{y}=\beta_0+\beta_1x_1+\cdots+\beta_px_p=X\beta")
                 st.markdown("The coefficients minimize the sum of squared residuals:")
@@ -1442,7 +1452,7 @@ elif page == "Numerical Analysis & Comparison":
                 st.latex(r"\beta_i=\frac{c_i-\sum_{j=i+1}^{n}u_{ij}\beta_j}{u_{ii}}")
                 st.caption("At each elimination column, partial pivoting swaps in the row with the largest absolute pivot to reduce numerical instability.")
 
-            with st.expander("B. Nonlinear equations — Bisection, Newton, Secant, Fixed Point"):
+            with st.expander("C. Nonlinear equations — Bisection, Newton, Secant, Fixed Point"):
                 st.markdown("We seek a root of f(x) = 0.")
                 st.markdown("**Bisection:** for an interval with f(a)f(b) < 0:")
                 st.latex(r"c_k=\frac{a_k+b_k}{2}")
@@ -1454,21 +1464,21 @@ elif page == "Numerical Analysis & Comparison":
                 st.markdown("**Fixed Point:** rewrite the equation as x = g(x), then iterate:")
                 st.latex(r"x_{k+1}=g(x_k)")
 
-            with st.expander("C. Linear systems — Jacobi iteration"):
+            with st.expander("D. Linear systems — Jacobi iteration"):
                 st.markdown("For A x = b, split A = D + L + U, where D is diagonal:")
                 st.latex(r"x^{(k+1)}=D^{-1}\left(b-(L+U)x^{(k)}\right)")
                 st.markdown("Component form:")
                 st.latex(r"x_i^{(k+1)}=\frac{1}{a_{ii}}\left(b_i-\sum_{j\ne i}a_{ij}x_j^{(k)}\right)")
                 st.caption("Jacobi computes every new component from the previous iteration vector. Convergence is guaranteed under conditions such as strict diagonal dominance.")
 
-            with st.expander("D. Numerical integration — Trapezoidal and Simpson 1/3"):
+            with st.expander("E. Numerical integration — Trapezoidal and Simpson 1/3"):
                 st.markdown("**Composite Trapezoidal Rule** for equally spaced points, h = (b − a)/n:")
                 st.latex(r"\int_a^b f(x)\,dx\approx h\left[\frac{f(x_0)+f(x_n)}{2}+\sum_{i=1}^{n-1}f(x_i)\right]")
                 st.markdown("**Composite Simpson 1/3 Rule** (n must be even):")
                 st.latex(r"\int_a^b f(x)\,dx\approx\frac{h}{3}\left[f(x_0)+f(x_n)+4\sum_{i\;\mathrm{odd}}f(x_i)+2\sum_{i\;\mathrm{even},\;0<i<n}f(x_i)\right]")
                 st.caption("For the demonstration integral, the exact value is ∫₀¹ x² dx = 1/3. Simpson 1/3 integrates this quadratic exactly (up to floating-point rounding).")
 
-            with st.expander("E. Curve fitting — Straight line, Quadratic, Exponential"):
+            with st.expander("F. Curve fitting — Straight line, Quadratic, Exponential"):
                 st.markdown("**Straight-line fit:**")
                 st.latex(r"y=a+bx")
                 st.markdown("**Quadratic fit:**")
@@ -1478,7 +1488,7 @@ elif page == "Numerical Analysis & Comparison":
                 st.latex(r"\ln y=\ln a+bx,\qquad a=e^{\alpha}")
                 st.caption("The exponential fitting implementation requires positive y values because it applies the natural logarithm.")
 
-            with st.expander("F. Interpolation — Lagrange and Newton forms"):
+            with st.expander("G. Interpolation — Lagrange and Newton forms"):
                 st.markdown("**Lagrange interpolation polynomial:**")
                 st.latex(r"P(x)=\sum_{i=0}^{n}y_i\,L_i(x)")
                 st.latex(r"L_i(x)=\prod_{\substack{j=0\\j\ne i}}^{n}\frac{x-x_j}{x_i-x_j}")
