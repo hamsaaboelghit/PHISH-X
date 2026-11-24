@@ -6,7 +6,20 @@
 
 > This report supersedes the historical task-by-task notes previously stored in this file. Older task/branch snapshots are not current test evidence.
 
-## 1. Local full-suite result
+## 1. Latest automated verification of the classical numerical-analysis additions
+
+A GitHub Actions push run verified commit `d64091dc4a0e3e0059fb419a43a123c9b25804f3`, which introduced direct tests for the classical numerical-analysis module.
+
+- Workflow run: [45511574318](https://github.com/hamsaaboelghit/PHISH-X/actions/runs/45511574318)
+- Result: **success** on Python 3.10, 3.11, 3.12, and 3.13.
+- Python 3.12 test output: `340 passed, 1 skipped, 190 subtests passed in 5.66s`.
+- The same workflow also completed `python -m compileall -q app src tests`.
+
+The added tests cover Gaussian Elimination with pivoting and invalid/singular inputs, Jacobi, all four root-finding methods, Trapezoidal and Simpson 1/3 integration, three curve-fitting methods, four interpolation routines, and training/evaluation of the least-squares baseline.
+
+This successful run predates subsequent documentation and small dashboard-only refinements. Check the Actions page for a run matching the latest `main` commit before treating the entire final snapshot as CI-verified.
+
+## 2. Historical local full-suite result
 
 ### Delivery-time rerun — 14 November 2026
 
@@ -49,7 +62,7 @@ The test suite includes coverage for:
 
 One test is reported as skipped. This report does not infer the skip reason from the aggregate summary; inspect the pytest output or test marker if the instructor asks about that specific skip.
 
-## 2. Training CLI verification
+## 3. Training CLI verification
 
 The team ran:
 
@@ -90,7 +103,7 @@ Confusion matrix:
 
 These are the team's reported local run values, not a promise of future or external performance.
 
-## 3. Artifact-backed inference smoke test
+## 4. Artifact-backed inference smoke test
 
 The team loaded the generated artifact through the public inference API:
 
@@ -112,7 +125,7 @@ Previously reported examples included:
 
 These are smoke-test examples, not a statistically representative test set.
 
-## 4. Streamlit runtime verification
+## 5. Streamlit runtime verification
 
 The team ran Streamlit's `AppTest` against `app/main.py`, selected the **Model Evaluation** page, and inspected exceptions and rendered metrics.
 
@@ -142,7 +155,7 @@ This confirms that the page executed in the Streamlit test harness and rendered 
 
 The run emitted a bare-mode `ScriptRunContext` warning and deprecation warnings for `use_container_width`; these did not produce AppTest exceptions. The current `main` implementation has since migrated all 14 affected calls to Streamlit's `width="stretch"` argument. The local AppTest result above predates that cleanup, so the updated UI argument should be included in the next local smoke test.
 
-## 5. GitHub Actions status
+## 6. GitHub Actions status
 
 GitHub Actions runs automatically on pushes and pull requests. Their status changes over time, so this document does not freeze a status that may become stale. Check the repository Actions page and confirm the run corresponds to the latest `main` commit before stating that remote CI passed:
 
@@ -150,7 +163,7 @@ https://github.com/hamsaaboelghit/PHISH-X/actions
 
 The workflow matrix covers Python 3.10, 3.11, 3.12, and 3.13. The compile step now includes `app`, `src`, and `tests`.
 
-## 6. Reproduction commands
+## 7. Reproduction commands
 
 From the repository root:
 
@@ -162,7 +175,7 @@ streamlit run app/main.py
 
 The training command requires the approved dataset and split manifests at the paths documented in the README. The generated Joblib artifact and JSON metrics report are local outputs and are not committed to the repository.
 
-## 7. Verification boundaries
+## 8. Verification boundaries
 
 - A passing test suite verifies covered code paths; it does not prove that every possible URL is safe or correctly classified.
 - The reported model metrics are tied to the supplied dataset and Group Split by Host.
